@@ -1,0 +1,497 @@
+{
+  "$defs": {
+    "Author": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "anyOf": [
+            {
+              "format": "email",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Email"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "org": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Org"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "format": "uri",
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Author",
+      "type": "object"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "description": "Another plugin this one needs, with the versions it works with: {\"id\": \"com.sudoo.api\", \"version\":\n\">=1.0.0,<2.0.0\"}. A bare id (\"com.sudoo.api\") means any version.",
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*){2,6}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Requirement",
+      "type": "object"
+    },
+    "Setting": {
+      "additionalProperties": false,
+      "description": "One setting the plugin adds to the panel's settings page.",
+      "properties": {
+        "choices": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "maxItems": 50,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Choices"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "editable": {
+          "default": true,
+          "title": "Editable",
+          "type": "boolean"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "secret",
+            "choice"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "type",
+        "label"
+      ],
+      "title": "Setting",
+      "type": "object"
+    }
+  },
+  "$id": "https://hub.sudoo.sh/schemas/plugin-manifest-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "anyOf": [
+        {
+          "const": "https://hub.sudoo.sh/schemas/plugin-manifest-v1.json",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "$Schema"
+    },
+    "author": {
+      "$ref": "#/$defs/Author"
+    },
+    "description": {
+      "maxLength": 300,
+      "minLength": 10,
+      "title": "Description",
+      "type": "string"
+    },
+    "entry_points": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "minProperties": 1,
+      "title": "Entry Points",
+      "type": "object"
+    },
+    "homepage": {
+      "anyOf": [
+        {
+          "format": "uri",
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Homepage"
+    },
+    "icon": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Icon"
+    },
+    "id": {
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*){2,6}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "issues": {
+      "anyOf": [
+        {
+          "format": "uri",
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Issues"
+    },
+    "license": {
+      "maxLength": 200,
+      "title": "License",
+      "type": "string"
+    },
+    "long_description_file": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Long Description File"
+    },
+    "max_sudoo_version": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Sudoo Version"
+    },
+    "min_sudoo_version": {
+      "maxLength": 64,
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "title": "Min Sudoo Version",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 80,
+      "minLength": 2,
+      "title": "Name",
+      "type": "string"
+    },
+    "permissions": {
+      "items": {
+        "oneOf": [
+          {
+            "const": "network.inbound",
+            "description": "Adds routes or endpoints that clients call on the panel"
+          },
+          {
+            "const": "network.outbound",
+            "description": "Makes network connections from the panel to other hosts"
+          },
+          {
+            "const": "instances.read",
+            "description": "Reads instances, their backups, jobs and logs"
+          },
+          {
+            "const": "instances.write",
+            "description": "Creates, restores, starts, stops and changes instances"
+          },
+          {
+            "const": "accounts.read",
+            "description": "Reads panel accounts and their roles"
+          },
+          {
+            "const": "settings.read",
+            "description": "Reads panel settings"
+          },
+          {
+            "const": "settings.write",
+            "description": "Changes panel settings"
+          },
+          {
+            "const": "storage.read",
+            "description": "Reads the plugin's own records"
+          },
+          {
+            "const": "storage.write",
+            "description": "Writes the plugin's own records"
+          },
+          {
+            "const": "filesystem.read",
+            "description": "Reads files on the server outside the plugin's records"
+          },
+          {
+            "const": "filesystem.write",
+            "description": "Writes files on the server outside the plugin's records"
+          },
+          {
+            "const": "secrets",
+            "description": "Keeps secrets in the panel's encrypted vault"
+          },
+          {
+            "const": "mail.send",
+            "description": "Sends e-mail through the panel's mailer"
+          },
+          {
+            "const": "docker",
+            "description": "Starts and removes containers (powerful: close to full control of the server)"
+          }
+        ],
+        "type": "string"
+      },
+      "title": "Permissions",
+      "type": "array"
+    },
+    "price": {
+      "anyOf": [
+        {
+          "maximum": 1000000,
+          "minimum": 100,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Price"
+    },
+    "requires": {
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Requirement"
+          },
+          {
+            "maxLength": 128,
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*){2,6}$",
+            "type": "string"
+          }
+        ]
+      },
+      "maxItems": 20,
+      "title": "Requires",
+      "type": "array"
+    },
+    "screenshots": {
+      "items": {
+        "maxLength": 200,
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Screenshots",
+      "type": "array"
+    },
+    "sdk_version": {
+      "maxLength": 100,
+      "title": "Sdk Version",
+      "type": "string"
+    },
+    "settings": {
+      "items": {
+        "$ref": "#/$defs/Setting"
+      },
+      "maxItems": 100,
+      "title": "Settings",
+      "type": "array"
+    },
+    "signature": {
+      "default": null,
+      "title": "Signature",
+      "type": "null"
+    },
+    "tags": {
+      "items": {
+        "pattern": "^[a-z0-9][a-z0-9-]{0,30}$",
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Tags",
+      "type": "array"
+    },
+    "tier": {
+      "default": "free",
+      "enum": [
+        "free",
+        "paid"
+      ],
+      "title": "Tier",
+      "type": "string"
+    },
+    "type": {
+      "enum": [
+        "auth",
+        "second_factor",
+        "mailer",
+        "exposure",
+        "update_trigger",
+        "addon_source",
+        "storage",
+        "rate_limiter",
+        "backup",
+        "notification",
+        "instance_hook",
+        "dashboard_widget",
+        "web_page",
+        "background_task",
+        "theme",
+        "api",
+        "mcp",
+        "extension"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 64,
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "version",
+    "sdk_version",
+    "min_sudoo_version",
+    "author",
+    "description",
+    "license",
+    "type",
+    "entry_points"
+  ],
+  "title": "Sudoo plugin manifest v1",
+  "type": "object"
+}

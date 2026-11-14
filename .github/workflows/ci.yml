@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.14"]  # the oldest supported and the newest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies (locked)
+        run: uv sync --locked
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format (black)
+        run: uv run black --check .
+
+      - name: Type-check (mypy)
+        run: uv run mypy
+
+      - name: Tests (pytest)
+        run: uv run pytest
+
+      - name: A new theme validates, tests and packs reproducibly
+        run: |
+          uv run sudoo-plugin new theme com.example.ci-theme --dir "$RUNNER_TEMP/ci-theme"
+          uv run sudoo-plugin validate --strict "$RUNNER_TEMP/ci-theme"
+          uv run sudoo-plugin test "$RUNNER_TEMP/ci-theme"
+          uv run sudoo-plugin pack "$RUNNER_TEMP/ci-theme" --out "$RUNNER_TEMP/a" | tail -1 > "$RUNNER_TEMP/a.sum"
+          uv run sudoo-plugin pack "$RUNNER_TEMP/ci-theme" --out "$RUNNER_TEMP/b" | tail -1 > "$RUNNER_TEMP/b.sum"
+          diff "$RUNNER_TEMP/a.sum" "$RUNNER_TEMP/b.sum"
+
+      - name: Build the wheel and source archive
+        run: uv build

@@ -1,0 +1,89 @@
+[project]
+name = "sudoo-plugin-sdk"
+version = "0.1.0"
+description = "Build, check, test, pack and publish plugins for the Sudoo.sh panel: manifest types, plugin interfaces, a test harness and the sudoo-plugin command."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.md"]
+authors = [
+    { name = "Yousef M. Y. Al Sabbah", email = "itzyousefalsabbah@gmail.com" }
+]
+requires-python = ">=3.12"
+keywords = ["sudoo", "odoo", "plugin", "sdk"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+dependencies = [
+    "cryptography>=50.0.2",
+    "email-validator>=2.3.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.14.3",
+]
+
+[project.optional-dependencies]
+# `sudoo-plugin test` and the pytest fixtures (sudoo_context, fake_services, ...)
+test = ["pytest>=9.2.0"]
+
+[project.scripts]
+sudoo-plugin = "sudoo_plugin_sdk.cli:main"
+
+[project.entry-points.pytest11]
+sudoo_plugin_sdk = "sudoo_plugin_sdk.testing.pytest_plugin"
+
+[project.urls]
+Homepage = "https://developers.sudoo.sh"
+Documentation = "https://docs.sudoo.sh/plugin-sdk/"
+Source = "https://github.com/Sudoo-sh/sudoo-plugin-sdk"
+Issues = "https://github.com/Sudoo-sh/sudoo-plugin-sdk/issues"
+
+[build-system]
+requires = ["uv_build>=0.13.8,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "sudoo_plugin_sdk"
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, import order, bugbear, modern syntax, simplifications, security
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "S", "RUF"]
+ignore = ["E501"]  # black decides line length
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]  # assert and fixed test values
+
+[tool.ruff.lint.isort]
+known-first-party = ["sudoo_plugin_sdk"]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+python_version = "3.12"
+files = ["src", "tests"]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[dependency-groups]
+dev = [
+    "black>=26.10.1",
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+]

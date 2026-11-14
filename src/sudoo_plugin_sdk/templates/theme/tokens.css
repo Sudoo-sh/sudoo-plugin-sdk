@@ -1,0 +1,23 @@
+/* Theme tokens: the panel's custom properties, light first, then dark (twice, as the panel writes it).
+   Only colour, font, shape, shadow and material tokens may change; `sudoo-plugin validate` lists the names.
+   Keep text readable: --text on --bg and --surface, and --on-accent on --accent, need 4.5:1 or more. */
+
+:root {
+  --accent: #2f5d8a;
+  --accent-ink: #244a6e;
+  --on-accent: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #8fb4dc;
+    --accent-ink: #b0cbe8;
+    --on-accent: #0e1a26;
+  }
+}
+
+:root[data-theme="dark"] {
+  --accent: #8fb4dc;
+  --accent-ink: #b0cbe8;
+  --on-accent: #0e1a26;
+}
