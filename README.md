@@ -1,7 +1,7 @@
 # Sudoo.sh plugin SDK
 
 [![CI](https://github.com/Sudoo-sh/sudoo-plugin-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/Sudoo-sh/sudoo-plugin-sdk/actions/workflows/ci.yml)
-[![Licence: MIT](https://img.shields.io/badge/licence-MIT-informational)](LICENSE.md)
+[![Licence: Apache-2.0](https://img.shields.io/badge/licence-Apache--2.0-informational)](LICENSE.md)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-informational)
 
 Everything needed to build a plugin for [Sudoo.sh](https://sudoo.sh), the self-hosted panel that runs a live Odoo
@@ -45,10 +45,10 @@ for every Git branch on your own server:
 
 ## Licence
 
-The SDK is released under the **MIT licence** ([LICENSE.md](LICENSE.md)), so the code of a third-party plugin that
-imports it is not encumbered: you may license your plugin as you like, open or closed, free or paid. The panel
-itself and the hub are under their own licences. The owner of Sudoo.sh may change the SDK's licence for future
-versions; versions already released keep theirs.
+The SDK is released under the **Apache License 2.0** ([LICENSE.md](LICENSE.md)). It is permissive, so the code of a
+third-party plugin that imports it is not encumbered: you may license your plugin as you like, open or closed, free
+or paid. It also grants a patent licence from every contributor and keeps the Sudoo.sh name, logo and badges out of
+the grant (trademarks). The panel and the hub are under their own licences.
 
 ## Install
 
