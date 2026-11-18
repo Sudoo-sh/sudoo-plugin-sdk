@@ -6,7 +6,11 @@ says which SDK versions it was written for.
 
 ## 0.1.0 - unreleased
 
-First version.
+First version, published on PyPI as `sudoo-plugin-sdk` (`pip install sudoo-plugin-sdk`).
+
+- Packaging: complete PyPI metadata (licence expression `Apache-2.0`, project links, classifiers, `py.typed`) and a
+  `publish.yml` workflow that builds the wheel and source archive on a GitHub release and uploads them to PyPI with
+  trusted publishing and attestations (see RELEASING.md).
 
 - `manifest`: the plugin manifest v1, a port of the hub's model with the same rules (14 permissions, `requires`,
   paid plugins, settings), and its JSON Schema (identical to `https://hub.sudoo.sh/schemas/plugin-manifest-v1.json`).
