@@ -11,7 +11,7 @@ First version.
 - `manifest`: the plugin manifest v1, a port of the hub's model with the same rules (14 permissions, `requires`,
   paid plugins, settings), and its JSON Schema (identical to `https://hub.sudoo.sh/schemas/plugin-manifest-v1.json`).
 - `PluginContext` (settings, services, logger, data folder, the plugin's own storage, secrets and mail),
-  `Caller`, `ServiceError` and the service-layer Protocols of ROADMAP section 11.
+  `Caller`, `ServiceError` and the Protocols of the panel's service layer.
 - `SudooPlugin` with the lifecycle hooks `on_install`, `on_enable`, `on_disable`, `on_uninstall`.
 - Interfaces of the eight groups the panel loads today (exposure, add-on sources, update triggers, storage,
   authenticators, second factors, mailers, rate limiters) and of the groups planned for Sudoo.sh 2.0 (backups,
