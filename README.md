@@ -229,7 +229,7 @@ class WebhookAlerts(SudooPlugin):
 | Attribute | What it is |
 | :--- | :--- |
 | `settings` | The values of the manifest's settings (defaults until the administrator changes them): `settings.string(key)`, `.integer`, `.number`, `.boolean`, or `settings[key]` |
-| `services` | The panel's service layer: `instances`, `jobs`, `backups`, `versions`, `docs`, `server`, `events`, `routes` (ROADMAP section 11). Every call takes a `Caller`, checks its permissions and is audited |
+| `services` | The panel's service layer: `instances`, `jobs`, `backups`, `versions`, `docs`, `server`, `events`, `routes`. Every call takes a `Caller`, checks its permissions and is audited |
 | `caller` | The plugin's own `Caller` (`plugin:<id>`), for work it does by itself; it may do what its granted permissions allow (`instances.read` lets it view instances and logs, `instances.write` also change them) |
 | `logger` | A `logging.Logger` whose lines appear in the panel's log |
 | `data_dir` | A folder only this plugin writes to; kept across updates, removed on uninstall |
@@ -454,7 +454,7 @@ next to this one.
 | Account | [app.sudoo.sh](https://app.sudoo.sh) |
 | Hub API | [hub.sudoo.sh](https://hub.sudoo.sh) |
 | Status | [status.sudoo.sh](https://status.sudoo.sh) |
-| Panel source | [github.com/Yosef-AlSabbah/sudoo.sh](https://github.com/Yosef-AlSabbah/sudoo.sh) |
+| Panel source | [github.com/Sudoo-sh/sudoo.sh](https://github.com/Sudoo-sh/sudoo.sh) |
 | Plugin template | [github.com/Sudoo-sh/sudoo-plugin-template](https://github.com/Sudoo-sh/sudoo-plugin-template) |
 
-© 2026 Yousef M. Y. Al Sabbah
+© 2026 Sudoo.sh
