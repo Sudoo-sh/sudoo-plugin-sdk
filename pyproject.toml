@@ -9,15 +9,19 @@ authors = [
     { name = "Sudoo.sh", email = "support@sudoo.sh" }
 ]
 requires-python = ">=3.12"
-keywords = ["sudoo", "odoo", "plugin", "sdk"]
+keywords = ["sudoo", "sudoo.sh", "odoo", "plugin", "sdk", "theme", "panel", "self-hosted"]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Framework :: Pytest",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 dependencies = [
@@ -38,10 +42,11 @@ sudoo-plugin = "sudoo_plugin_sdk.cli:main"
 sudoo_plugin_sdk = "sudoo_plugin_sdk.testing.pytest_plugin"
 
 [project.urls]
-Homepage = "https://developers.sudoo.sh"
-Documentation = "https://docs.sudoo.sh/plugin-sdk/"
+Homepage = "https://sudoo.sh"
+Documentation = "https://docs.sudoo.sh/plugins"
 Source = "https://github.com/Sudoo-sh/sudoo-plugin-sdk"
 Issues = "https://github.com/Sudoo-sh/sudoo-plugin-sdk/issues"
+Changelog = "https://github.com/Sudoo-sh/sudoo-plugin-sdk/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["uv_build>=0.13.8,<0.14.0"]

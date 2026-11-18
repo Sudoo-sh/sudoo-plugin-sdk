@@ -1,7 +1,8 @@
 # Sudoo.sh plugin SDK
 
 [![CI](https://github.com/Sudoo-sh/sudoo-plugin-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/Sudoo-sh/sudoo-plugin-sdk/actions/workflows/ci.yml)
-[![Licence: Apache-2.0](https://img.shields.io/badge/licence-Apache--2.0-informational)](LICENSE.md)
+[![Licence: Apache-2.0](https://img.shields.io/badge/licence-Apache--2.0-informational)](https://github.com/Sudoo-sh/sudoo-plugin-sdk/blob/main/LICENSE.md)
+[![PyPI](https://img.shields.io/pypi/v/sudoo-plugin-sdk)](https://pypi.org/project/sudoo-plugin-sdk/)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-informational)
 
 Everything needed to build a plugin for [Sudoo.sh](https://sudoo.sh), the self-hosted panel that runs a live Odoo
@@ -45,16 +46,23 @@ for every Git branch on your own server:
 
 ## Licence
 
-The SDK is released under the **Apache License 2.0** ([LICENSE.md](LICENSE.md)). It is permissive, so the code of a
-third-party plugin that imports it is not encumbered: you may license your plugin as you like, open or closed, free
-or paid. It also grants a patent licence from every contributor and keeps the Sudoo.sh name, logo and badges out of
+The SDK is released under the **Apache License 2.0**
+([LICENSE.md](https://github.com/Sudoo-sh/sudoo-plugin-sdk/blob/main/LICENSE.md)). It is permissive, so the code of
+a third-party plugin that imports it is not encumbered: you may license your plugin as you like, open or closed,
+free or paid. It also grants a patent licence from every contributor and keeps the Sudoo.sh name, logo and badges out of
 the grant (trademarks). The panel and the hub are under their own licences.
 
 ## Install
 
-Until the SDK is on PyPI it is installed from its Git repository.
+The SDK is published on [PyPI](https://pypi.org/project/sudoo-plugin-sdk/):
 
-**From Git (the default in a plugin's `pyproject.toml`)**
+```bash
+pip install sudoo-plugin-sdk
+# with the test harness (`sudoo-plugin test` and the pytest fixtures):
+pip install "sudoo-plugin-sdk[test]"
+```
+
+**In a plugin's `pyproject.toml` (the default in the template)**
 
 ```toml
 [project]
@@ -62,21 +70,14 @@ dependencies = ["sudoo-plugin-sdk>=0.1.0,<1.0.0"]
 
 [dependency-groups]
 dev = ["sudoo-plugin-sdk[test]>=0.1.0,<1.0.0", "pytest>=9.2.0"]
+```
 
+**From Git (an unreleased commit)**
+
+```toml
 [tool.uv.sources]
 sudoo-plugin-sdk = { git = "https://github.com/Sudoo-sh/sudoo-plugin-sdk" }
 ```
-
-While the repository is private, `uv` needs a token that can read it. Create a GitHub fine-grained token with
-read access to the repository's contents, then either let Git use it for this organisation:
-
-```bash
-git config --global url."https://x-access-token:${GH_TOKEN}@github.com/Sudoo-sh/".insteadOf "https://github.com/Sudoo-sh/"
-uv sync
-```
-
-or rely on a Git credential helper (`gh auth login` sets one up). In GitHub Actions the template does the same with
-a `SUDOO_SDK_TOKEN` secret.
 
 **From a local checkout (developing the SDK and a plugin together)**
 
@@ -94,7 +95,7 @@ installing the plugin itself.
 **As a tool**
 
 ```bash
-uv tool install "sudoo-plugin-sdk[test] @ git+https://github.com/Sudoo-sh/sudoo-plugin-sdk"
+uv tool install "sudoo-plugin-sdk[test]"   # or: pipx install "sudoo-plugin-sdk[test]"
 sudoo-plugin --version
 ```
 
@@ -436,6 +437,9 @@ uv run mypy             # types (strict)
 uv run pytest           # tests
 uv build                # wheel and source archive
 ```
+
+Releases are published to PyPI by `.github/workflows/publish.yml`; see
+[RELEASING.md](https://github.com/Sudoo-sh/sudoo-plugin-sdk/blob/main/RELEASING.md).
 
 Keep `manifest.py` in step with the hub (`src/hub/schemas/manifest.py`). When the hub's model changes, port the
 change and refresh `tests/data/hub-manifest-schema.json` from the hub
