@@ -114,6 +114,24 @@ def test_invalid_manifests_are_refused(changes: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize(
+    "changes",
+    [
+        {"entry_points": {"sudoo.mailers\n": {"smtp": "sudoo_plugin_smtp.plugin:Smtp"}}},
+        {"entry_points": {"sudoo.mailers": {"smtp\n": "sudoo_plugin_smtp.plugin:Smtp"}}},
+        {"entry_points": {"sudoo.mailers": {"smtp": "sudoo_plugin_smtp.plugin:Smtp\n"}}},
+        {"id": "com.sudoo.smtp\n"},
+        {"version": "1.0.0\n"},
+        {"tags": ["email\n"]},
+        {"license": "MIT\n"},
+        {"settings": [{"key": "host\n", "type": "string", "label": "Host"}]},
+    ],
+)
+def test_a_trailing_newline_is_refused(changes: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        Manifest.model_validate(_with(**changes))
+
+
+@pytest.mark.parametrize(
     "setting",
     [
         {"key": "port", "type": "integer", "label": "Port", "default": "587"},

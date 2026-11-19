@@ -4,7 +4,20 @@ All notable changes to the Sudoo.sh plugin SDK. Versions follow [semver](https:/
 version may change an interface; from 1.0.0 only a major version does. A plugin's `sdk_version` in manifest.json
 says which SDK versions it was written for.
 
-## 0.1.0 - unreleased
+## 0.1.1 - unreleased
+
+- `pack` and `publish`: a file is refused when any folder on its way is a symbolic link, or when it resolves
+  outside the project, as a linked file already was. A linked `src/` or `assets/` is refused before it is read.
+- `manifest`: entry-point groups, names and targets, version specifiers, licences and the other single-value
+  formats are matched against the whole value, so a trailing newline is refused. The same applies to the
+  package SHA-256 in `signing`, the plugin id in `new` and the e-mail accent.
+- `Theme` tokens: comments are removed the way a browser reads them, so "/*" inside a quoted value starts no
+  comment; a quoted value containing "/*" or "*/" is refused.
+- `Theme` logo: an allow-list of SVG elements (shapes, text, gradients, clips, masks, simple filters) and
+  presentation attributes. `<style>`, `style` attributes, elements outside the SVG namespace, editor attributes,
+  comments, CDATA sections and any `url()` other than `url(#id)` are refused.
+
+## 0.1.0 - 2026-11-19
 
 First version, published on PyPI as `sudoo-plugin-sdk` (`pip install sudoo-plugin-sdk`).
 

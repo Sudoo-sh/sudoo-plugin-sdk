@@ -75,6 +75,52 @@ def test_links_are_refused(make_project: ProjectFactory, tmp_path: Path) -> None
         pack(project, load_manifest(project), tmp_path)
 
 
+def _outside(tmp_path: Path) -> Path:
+    folder = tmp_path / "outside"
+    folder.mkdir()
+    (folder / "hosts.yml").write_text("token: not-for-the-package\n")
+    (folder / "notes.md").write_text("# Not for the package\n")
+    return folder
+
+
+@pytest.mark.parametrize("tree", ["assets", "src"])
+def test_linked_trees_are_refused(make_project: ProjectFactory, tmp_path: Path, tree: str) -> None:
+    project = make_project("theme")
+    outside = _outside(tmp_path)
+    if (project / tree).exists():
+        (project / tree).rename(project / f"{tree}.real")
+    (project / tree).symlink_to(os.path.relpath(outside, project))
+    contents = collect(project, load_manifest(project))
+    assert f"{tree}/ is a symbolic link; packages hold plain files only." in contents.errors
+    assert not any(name.endswith("hosts.yml") for name in contents.files)
+    with pytest.raises(PackError, match="symbolic link"):
+        pack(project, load_manifest(project), tmp_path / "out")
+
+
+def test_files_inside_a_linked_folder_are_refused(make_project: ProjectFactory, tmp_path: Path) -> None:
+    project = make_project("theme", long_description_file="docs/notes.md")
+    (project / "docs").symlink_to(os.path.relpath(_outside(tmp_path), project))
+    contents = collect(project, load_manifest(project))
+    assert "docs/notes.md is or is inside a symbolic link; packages hold plain files only." in contents.errors
+    assert "docs/notes.md" not in contents.files
+
+
+def test_linked_folders_below_a_tree_are_refused(make_project: ProjectFactory, tmp_path: Path) -> None:
+    project = make_project("theme")
+    (project / "assets").mkdir()
+    (project / "assets" / "more").symlink_to(_outside(tmp_path), target_is_directory=True)
+    contents = collect(project, load_manifest(project))
+    assert any("assets/more" in error and "symbolic link" in error for error in contents.errors)
+    assert not any(name.startswith("assets/more/") for name in contents.files)
+
+
+def test_a_project_opened_through_a_link_still_packs(make_project: ProjectFactory, tmp_path: Path) -> None:
+    project = make_project("theme")
+    link = tmp_path / "linked-project"
+    link.symlink_to(project, target_is_directory=True)
+    assert pack(link, load_manifest(link), tmp_path / "out").files > 0
+
+
 def test_compiled_files_are_a_warning(make_project: ProjectFactory) -> None:
     project = make_project("theme")
     (project / "src" / "native.so").write_bytes(b"\x7fELF")

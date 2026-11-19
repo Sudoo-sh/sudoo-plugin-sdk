@@ -77,7 +77,7 @@ def sha256_of(source: bytes | Path | Iterable[bytes]) -> str:
 
 
 def signing_message(plugin_id: str, version: str, sha256: str) -> bytes:
-    if not SHA256_RE.match(sha256):
+    if not SHA256_RE.fullmatch(sha256):
         raise ValueError("sha256 must be 64 lower-case hex digits")
     if not plugin_id or not version or any(c in plugin_id + version for c in "\n\r\0"):
         raise ValueError("plugin id and version must be single-line and not empty")

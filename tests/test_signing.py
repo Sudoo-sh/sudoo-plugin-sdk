@@ -35,6 +35,8 @@ def test_the_statement_format() -> None:
         signing_message("com.example.x\n", "1.0.0", "a" * 64)
     with pytest.raises(ValueError):
         signing_message("com.example.x", "1.0.0", "A" * 64)
+    with pytest.raises(ValueError):
+        signing_message("com.example.x", "1.0.0", "a" * 64 + "\n")
 
 
 def test_matches_the_hubs_signature() -> None:

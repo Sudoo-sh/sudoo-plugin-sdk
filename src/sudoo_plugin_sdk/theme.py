@@ -213,7 +213,7 @@ def _declarations(body: str, where: str, report: ThemeReport) -> dict[str, str]:
             continue
         lowered = value.lower()
         if (
-            not _VALUE_RE.match(value)
+            not _VALUE_RE.fullmatch(value)
             or "url(" in lowered
             or "expression" in lowered
             or "javascript" in lowered
@@ -231,6 +231,38 @@ def _declarations(body: str, where: str, report: ThemeReport) -> dict[str, str]:
     return found
 
 
+def _strip_comments(css: str, report: ThemeReport) -> str | None:
+    """`css` without its /* comments */, read the way a browser does: a quoted string is text, not a comment, so
+    "/*" in a string starts nothing. Comment markers inside a string are refused outright. None after an error."""
+    out: list[str] = []
+    position = 0
+    while position < len(css):
+        char = css[position]
+        if char in "\"'":
+            end = position + 1
+            while end < len(css) and css[end] not in (char, "\n"):
+                end += 1
+            if end >= len(css) or css[end] != char:
+                report.errors.append("A quoted string is not closed.")
+                return None
+            text = css[position : end + 1]
+            if "/*" in text or "*/" in text:
+                report.errors.append(f"A quoted value may not contain /* or */: {text[:60]!r}.")
+                return None
+            out.append(text)
+            position = end + 1
+        elif css.startswith("/*", position):
+            end = css.find("*/", position + 2)
+            if end == -1:
+                report.errors.append("A comment is not closed.")
+                return None
+            position = end + 2
+        else:
+            out.append(char)
+            position += 1
+    return "".join(out)
+
+
 def check_tokens_css(css: str) -> ThemeReport:
     """Check a theme's tokens file; the report has the light and dark values on success."""
     report = ThemeReport()
@@ -240,10 +272,10 @@ def check_tokens_css(css: str) -> ThemeReport:
     if "\\" in css or "<" in css:
         report.errors.append("The tokens file may not contain backslashes or '<'.")
         return report
-    css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
-    if "/*" in css:
-        report.errors.append("A comment is not closed.")
+    stripped = _strip_comments(css, report)
+    if stripped is None:
         return report
+    css = stripped
     blocks = _split_blocks(css, report)
     if blocks is None:
         return report
@@ -335,11 +367,37 @@ def _check_contrast(report: ThemeReport, mode: str, values: dict[str, str]) -> N
 
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK_NS = "http://www.w3.org/1999/xlink"
-_FORBIDDEN_ELEMENTS = frozenset(
-    {"script", "foreignobject", "iframe", "embed", "object", "image", "a", "animate", "set", "animatemotion",
-     "animatetransform", "handler", "listener", "audio", "video", "canvas", "font", "font-face"}
+# Logos are checked against an allow-list: SVG shapes, text, gradients, clips, masks and simple filters, with
+# presentation attributes only. Anything else (scripts, <style>, links, embedded documents, animations, elements
+# outside the SVG namespace, style attributes) is refused.
+_ALLOWED_ELEMENTS = frozenset(
+    {"svg", "g", "defs", "title", "desc", "symbol", "use", "path", "rect", "circle", "ellipse", "line", "polyline",
+     "polygon", "text", "tspan", "textpath", "lineargradient", "radialgradient", "stop", "pattern", "clippath",
+     "mask", "marker", "filter", "feblend", "fecolormatrix", "fecomposite", "fedropshadow", "feflood",
+     "fegaussianblur", "femerge", "femergenode", "femorphology", "feoffset"}
 )  # fmt: skip
+_ALLOWED_ATTRIBUTES = frozenset(
+    {"id", "class", "version", "viewbox", "preserveaspectratio", "width", "height", "x", "y", "x1", "y1", "x2",
+     "y2", "cx", "cy", "r", "rx", "ry", "fx", "fy", "fr", "d", "points", "pathlength", "transform", "href",
+     "role", "aria-label", "aria-hidden", "aria-labelledby", "aria-describedby", "focusable", "lang",
+     "gradientunits", "gradienttransform", "spreadmethod", "offset", "stop-color", "stop-opacity",
+     "patternunits", "patterncontentunits", "patterntransform", "clippathunits", "maskunits", "maskcontentunits",
+     "markerunits", "markerwidth", "markerheight", "refx", "refy", "orient", "filterunits", "primitiveunits",
+     "in", "in2", "result", "stddeviation", "dx", "dy", "mode", "type", "values", "operator", "k1", "k2", "k3",
+     "k4", "radius", "edgemode", "flood-color", "flood-opacity", "lighting-color",
+     "color-interpolation-filters", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width",
+     "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset",
+     "stroke-opacity", "opacity", "clip-path", "clip-rule", "mask", "filter", "marker-start", "marker-mid",
+     "marker-end", "color", "display", "visibility", "overflow", "paint-order", "vector-effect",
+     "shape-rendering", "text-rendering", "color-interpolation", "font-family", "font-size", "font-weight",
+     "font-style", "font-variant", "font-stretch", "text-anchor", "dominant-baseline", "alignment-baseline",
+     "baseline-shift", "letter-spacing", "word-spacing", "text-decoration", "rotate", "textlength",
+     "lengthadjust", "startoffset", "method", "spacing", "side", "writing-mode", "direction", "unicode-bidi"}
+)  # fmt: skip
+_XML_NS = "http://www.w3.org/XML/1998/namespace"
+_ALLOWED_NAMESPACED = frozenset({f"{{{XLINK_NS}}}href", f"{{{_XML_NS}}}space", f"{{{_XML_NS}}}lang"})
 _URL_RE = re.compile(r"url\(\s*(['\"]?)(.*?)\1\s*\)", re.IGNORECASE)
+_NON_LOCAL_URL_RE = re.compile(r"url\(\s*(?!['\"]?\s*#)", re.IGNORECASE)
 
 
 def _local(tag: str) -> str:
@@ -347,12 +405,38 @@ def _local(tag: str) -> str:
 
 
 def _external_url(text: str) -> bool:
-    return any(not target.strip().startswith("#") for _, target in _URL_RE.findall(text))
+    return any(not target.strip().startswith("#") for _, target in _URL_RE.findall(text)) or bool(
+        _NON_LOCAL_URL_RE.search(text)
+    )
+
+
+def _attribute_problem(element: str, attribute: str, value: str) -> str | None:
+    local = _local(attribute)
+    if local.startswith("on"):
+        return f"The event handler {local} is not allowed."
+    if local == "style":
+        return f"<{element} style=...>: style attributes are not allowed; use presentation attributes (fill=...)."
+    if attribute.startswith("{") and attribute not in _ALLOWED_NAMESPACED:
+        return f"<{element}>: the attribute {attribute[:80]!r} is not allowed (editor data is not needed in a logo)."
+    if not attribute.startswith("{") and local not in _ALLOWED_ATTRIBUTES:
+        return f"<{element}>: the attribute {local[:40]!r} is not allowed in a logo."
+    lowered = value.lower()
+    if local == "href":
+        if not value.strip().startswith("#"):
+            return f"<{element} href={value[:40]!r}> refers outside the file; only #id is allowed."
+        return None
+    if _external_url(value):
+        return f"{local}={value[:40]!r} refers outside the file; only url(#id) is allowed."
+    if "\\" in value or "image-set" in lowered or "image(" in lowered or "expression(" in lowered:
+        return f"{local}={value[:40]!r} is not allowed."
+    return None
 
 
 def check_logo_svg(data: bytes) -> list[str]:
-    """What is wrong with a logo SVG (an empty list when it is safe): no scripts, event handlers, links, embedded
-    documents, animations or references outside the file. The SDK refuses rather than rewriting a file."""
+    """What is wrong with a logo SVG (an empty list when it is safe). Only SVG shapes, text, gradients, clips,
+    masks and simple filters with presentation attributes are allowed: no scripts, <style>, event handlers, links,
+    embedded documents, animations, elements outside the SVG namespace or references outside the file. The SDK
+    refuses rather than rewriting a file."""
     problems: list[str] = []
     if len(data) > MAX_LOGO_BYTES:
         return ["The logo is larger than 64 KB."]
@@ -365,6 +449,9 @@ def check_logo_svg(data: bytes) -> list[str]:
         return ["The logo may not contain a DOCTYPE or entities."]
     if re.search(r"<\?(?!xml\s)", text):
         return ["The logo may not contain processing instructions."]
+    if "<!--" in text or "<![cdata[" in lowered:
+        # an HTML parser reads these differently from an XML parser when the SVG is placed inline in a page
+        return ["The logo may not contain comments or CDATA sections."]
     if "javascript:" in lowered or "data:" in lowered:
         problems.append("The logo may not contain javascript: or data: addresses.")
     try:
@@ -379,24 +466,20 @@ def check_logo_svg(data: bytes) -> list[str]:
         if not isinstance(element.tag, str):
             continue
         name = _local(element.tag)
-        if name in _FORBIDDEN_ELEMENTS:
+        if not element.tag.startswith(f"{{{SVG_NS}}}"):
+            problems.append(f"<{name}> is not an SVG element; only SVG elements are allowed in a logo.")
+        elif name not in _ALLOWED_ELEMENTS:
             problems.append(f"<{name}> is not allowed in a logo.")
-        if name == "style" and element.text and ("@import" in element.text.lower() or _external_url(element.text)):
-            problems.append("<style> may not import or refer to other files.")
         for attribute, value in element.attrib.items():
-            local = _local(attribute)
-            if local.startswith("on"):
-                problems.append(f"The event handler {local} is not allowed.")
-            elif local == "href" and not value.strip().startswith("#"):
-                problems.append(f"<{name} href={value[:40]!r}> refers outside the file; only #id is allowed.")
-            elif _external_url(value):
-                problems.append(f"{local}={value[:40]!r} refers outside the file; only url(#id) is allowed.")
+            problem = _attribute_problem(name, attribute, value)
+            if problem:
+                problems.append(problem)
     return sorted(set(problems))
 
 
 def check_email_accent(value: str) -> tuple[list[str], list[str]]:
     """(errors, warnings) of an e-mail accent: #RRGGBB, readable as a button with white text."""
-    if not EMAIL_ACCENT_RE.match(value):
+    if not EMAIL_ACCENT_RE.fullmatch(value):
         return [f"email_accent {value!r} must be a colour as #RRGGBB."], []
     rgb = parse_colour(value)
     assert rgb is not None  # noqa: S101 - matched above
