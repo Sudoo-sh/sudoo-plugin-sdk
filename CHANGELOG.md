@@ -4,7 +4,7 @@ All notable changes to the Sudoo.sh plugin SDK. Versions follow [semver](https:/
 version may change an interface; from 1.0.0 only a major version does. A plugin's `sdk_version` in manifest.json
 says which SDK versions it was written for.
 
-## 0.1.1 - unreleased
+## 0.1.1 - 2026-11-19
 
 - `pack` and `publish`: a file is refused when any folder on its way is a symbolic link, or when it resolves
   outside the project, as a linked file already was. A linked `src/` or `assets/` is refused before it is read.
