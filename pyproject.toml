@@ -1,6 +1,6 @@
 [project]
 name = "sudoo-plugin-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Build, check, test, pack and publish plugins for the Sudoo.sh panel: manifest types, plugin interfaces, a test harness and the sudoo-plugin command."
 readme = "README.md"
 license = "Apache-2.0"

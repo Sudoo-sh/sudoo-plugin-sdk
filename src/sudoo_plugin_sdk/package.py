@@ -99,6 +99,16 @@ def _walk(root: Path, folder: Path) -> Iterable[Path]:
             yield path
 
 
+def _linked(project: Path, path: Path) -> bool:
+    """Whether `path` (below the resolved `project`) is or goes through a symbolic link, or resolves outside it."""
+    current = project
+    for part in path.relative_to(project).parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return not path.resolve().is_relative_to(project)
+
+
 def collect(project: Path, manifest: Manifest) -> Contents:
     """Every file that goes into the package of `project`, with what is wrong."""
     contents = Contents()
@@ -113,8 +123,8 @@ def collect(project: Path, manifest: Manifest) -> Contents:
         if matches(name, FORBIDDEN):
             contents.errors.append(f"{name} must not be in a package (secrets or repository data).")
             return
-        if path.is_symlink():
-            contents.errors.append(f"{name} is a symbolic link; packages hold plain files only.")
+        if _linked(project, path):
+            contents.errors.append(f"{name} is or is inside a symbolic link; packages hold plain files only.")
             return
         if not stat.S_ISREG(path.stat().st_mode):
             contents.errors.append(f"{name} is not a plain file.")
@@ -135,6 +145,9 @@ def collect(project: Path, manifest: Manifest) -> Contents:
             add(project / relative, required=True)
     for tree in TREES:
         folder = project / tree
+        if folder.is_symlink():
+            contents.errors.append(f"{tree}/ is a symbolic link; packages hold plain files only.")
+            continue
         if folder.is_dir():
             for path in _walk(project, folder):
                 add(path)

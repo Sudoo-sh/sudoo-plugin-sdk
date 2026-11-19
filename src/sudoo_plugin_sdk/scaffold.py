@@ -47,7 +47,7 @@ class Names:
 
 
 def names_for(plugin_id: str) -> Names:
-    if not re.match(PLUGIN_ID, plugin_id):
+    if not re.fullmatch(PLUGIN_ID, plugin_id):
         raise ScaffoldError(
             f"{plugin_id!r} is not a plugin id: reverse domain, lower case, at least three parts (com.example.backup)."
         )

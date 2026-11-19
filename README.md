@@ -17,7 +17,7 @@ for every Git branch on your own server:
 
 | | |
 | :--- | :--- |
-| Package | `sudoo-plugin-sdk` (import `sudoo_plugin_sdk`), version 0.1.0 |
+| Package | `sudoo-plugin-sdk` (import `sudoo_plugin_sdk`), version 0.1.1 |
 | Command | `sudoo-plugin` |
 | Python | 3.12 or newer (CI runs 3.12 and 3.14) |
 | Depends on | pydantic, email-validator, cryptography, httpx; pytest for `sudoo-plugin test` (extra `test`) |
@@ -327,9 +327,11 @@ or the reduced-motion behaviour. Values may not use `url()`, `image()`, `express
 light and in dark (an error otherwise); `--text-2`, `--text-3`, `--accent-ink` on `--surface` and `--text` on
 `--raised` below 4.5:1 are warnings. Tokens a theme leaves out keep the panel's values, and are checked with them.
 
-**The logo** is an SVG with a `viewBox`, at most 64 KB: no `<script>`, `<foreignObject>`, `<image>`, `<a>`,
-animations, event handlers (`on*`), DOCTYPE or entities, and no reference outside the file (`href` and `url()` only
-as `#id`). The SDK refuses an unsafe file rather than rewriting it.
+**The logo** is an SVG with a `viewBox`, at most 64 KB, made of SVG shapes, text, gradients, clips, masks and
+simple filters with presentation attributes (`fill`, `stroke`, ...) only: no `<script>`, `<style>`, `style`
+attributes, `<foreignObject>`, `<image>`, `<a>`, animations, event handlers (`on*`), elements outside the SVG
+namespace, editor attributes, comments, CDATA, DOCTYPE or entities, and no reference outside the file (`href` and
+`url()` only as `#id`). The SDK refuses an unsafe file rather than rewriting it.
 
 **The e-mail accent** is `#RRGGBB` (the panel's `BRAND_COLOR` format); a warning when white button text on it is
 below 4.5:1.
@@ -421,10 +423,11 @@ developers.sudoo.sh.
 
 - `validate` and `test` **import your plugin's code**, as the panel will; run them on code you trust (yours).
   `validate --no-import` checks everything that does not need the code.
-- `pack` refuses secrets and repository data and never follows links; it writes only into `dist/` (or `--out`).
+- `pack` refuses secrets and repository data and never follows links (a linked file or folder stops the build);
+  it writes only into `dist/` (or `--out`).
 - `publish` sends the token only to the hub address, over https, and does not follow redirects.
-- Theme files are data: the token parser accepts custom properties of known names only, and logos are refused
-  when they could run scripts or load anything from elsewhere. XML is parsed only after DOCTYPE and entities are
+- Theme files are data: the token parser accepts custom properties of known names only, and logos are checked
+  against an allow-list of SVG elements and attributes, so they cannot run scripts or load anything from elsewhere. XML is parsed only after DOCTYPE and entities are
   refused.
 
 ## Working on the SDK

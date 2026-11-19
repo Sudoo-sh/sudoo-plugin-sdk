@@ -78,6 +78,19 @@ def test_bad_tokens_are_refused(text: str, message: str) -> None:
     assert any(message in error for error in report.errors), report.errors
 
 
+def test_comment_markers_inside_strings_hide_nothing() -> None:
+    hidden = css(light='--font: "/*";') + 'html body * { display: none; }\n:root { --font-mono: "*/"; }'
+    report = check_tokens_css(hidden)
+    assert report.errors
+    assert any("/* or */" in error for error in report.errors), report.errors
+
+
+def test_quoted_values_and_comments_together() -> None:
+    text = css(light='--font: "Inter", sans-serif; /* the body font */')
+    assert check_tokens_css(text).errors == []
+    assert check_tokens_css(css(light='--font: "Inter;')).errors
+
+
 def test_weak_secondary_text_is_a_warning() -> None:
     report = check_tokens_css(css(light="--text-3: #b0b0b0;"))
     assert report.errors == []
@@ -149,7 +162,49 @@ def test_unsafe_logos_are_refused(svg: bytes, message: str) -> None:
     assert any(message in p for p in problems), problems
 
 
+def _svg(body: str, attributes: str = "") -> bytes:
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"{attributes}>{body}</svg>'.encode()
+
+
+@pytest.mark.parametrize(
+    ("svg", "message"),
+    [
+        (_svg("<p><style><!--</style><img src=x onerror=alert(1)>--></style></p>"), "comments"),
+        (_svg("<p><style>x</style></p>"), "<p>"),
+        (_svg('<style>rect { fill: image-set("https://e.x/a.png" 1x); }</style>'), "<style>"),
+        (_svg("<style>rect { fill: u\\72l(https://e.x/a.png); }</style>"), "<style>"),
+        (_svg("<style>body { display: none; }</style>"), "<style>"),
+        (_svg('<rect style="fill: url(https://e.x/a.png)"/>'), "style attributes"),
+        (_svg('<rect fill="url( https://e.x/a)"/>'), "outside"),
+        (_svg('<rect fill="image-set(&quot;https://e.x/a.png&quot; 1x)"/>'), "not allowed"),
+        (_svg('<html:div xmlns:html="http://www.w3.org/1999/xhtml"/>'), "not an SVG element"),
+        (_svg('<rect xmlns:i="http://www.inkscape.org/namespaces/inkscape" i:label="x"/>'), "not allowed"),
+        (_svg('<rect formaction="x"/>'), "'formaction'"),
+        (_svg("<!-->x<img src=x onerror=alert(1)>-->"), "comments"),
+        (_svg("<title><![CDATA[x]]></title>"), "CDATA"),
+        (_svg("<feImage/>"), "<feimage>"),
+        (_svg("<metadata/>"), "<metadata>"),
+    ],
+)
+def test_logos_outside_the_allow_list_are_refused(svg: bytes, message: str) -> None:
+    problems = check_logo_svg(svg)
+    assert any(message in p for p in problems), problems
+
+
+def test_a_logo_with_text_gradients_and_a_clip() -> None:
+    svg = _svg(
+        '<title>Mark</title><defs><radialGradient id="g" cx="0.5" cy="0.5" r="0.5">'
+        '<stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>'
+        '<clipPath id="c"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath></defs>'
+        '<g clip-path="url(#c)"><rect width="1" height="1" fill="url(\'#g\')"/></g>'
+        '<text x="0" y="1" font-family="sans-serif" font-size="0.5" xml:space="preserve">S</text>',
+        ' role="img" aria-label="Logo"',
+    )
+    assert check_logo_svg(svg) == []
+
+
 def test_email_accent() -> None:
     assert check_email_accent("#714B67") == ([], [])
     assert check_email_accent("714b67")[0]
+    assert check_email_accent("#714B67\n")[0]
     assert check_email_accent("#ffd43b")[1]  # too light behind white text

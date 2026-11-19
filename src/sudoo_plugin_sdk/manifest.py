@@ -195,7 +195,7 @@ class Requirement(BaseModel):
     def _specifier(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        if not SPECIFIER_RE.match(value.strip()):
+        if not SPECIFIER_RE.fullmatch(value.strip()):
             raise ValueError("must be a version specifier such as >=1.0.0 or >=1.0.0,<2.0.0")
         return value.strip()
 
@@ -233,14 +233,14 @@ class Manifest(BaseModel):
     @field_validator("sdk_version")
     @classmethod
     def _specifier(cls, value: str) -> str:
-        if not SPECIFIER_RE.match(value.strip()):
+        if not SPECIFIER_RE.fullmatch(value.strip()):
             raise ValueError("must be a version specifier such as >=2.0.0 or >=2.0.0,<3.0.0")
         return value.strip()
 
     @field_validator("license")
     @classmethod
     def _license(cls, value: str) -> str:
-        if not SPDX_RE.match(value):
+        if not SPDX_RE.fullmatch(value):
             raise ValueError("must be an SPDX license expression such as MIT or Apache-2.0")
         return value
 
@@ -272,14 +272,14 @@ class Manifest(BaseModel):
     @classmethod
     def _entry_points(cls, value: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
         for group, entries in value.items():
-            if not GROUP_RE.match(group):
+            if not GROUP_RE.fullmatch(group):
                 raise ValueError(f"entry point group {group!r} must look like sudoo.<name>")
             if not entries:
                 raise ValueError(f"entry point group {group!r} is empty")
             for name, target in entries.items():
-                if not NAME_RE.match(name):
+                if not NAME_RE.fullmatch(name):
                     raise ValueError(f"entry point name {name!r} must be lower case letters, digits, - and _")
-                if not ENTRY_POINT_RE.match(target):
+                if not ENTRY_POINT_RE.fullmatch(target):
                     raise ValueError(f"entry point {name!r} must be module.path:Object")
         return value
 
@@ -306,7 +306,7 @@ class Manifest(BaseModel):
 
 def _semver_key(version: str) -> tuple[int, int, int, int, tuple[Any, ...]]:
     """Order of two semver versions (build metadata ignored; a pre-release sorts before its release)."""
-    match = SEMVER_RE.match(version)
+    match = SEMVER_RE.fullmatch(version)
     if match is None:
         raise ValueError(f"{version!r} is not a semver version")
     major, minor, patch, pre = int(match[1]), int(match[2]), int(match[3]), match[4]
