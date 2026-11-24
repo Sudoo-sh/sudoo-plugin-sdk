@@ -450,6 +450,12 @@ change and refresh `tests/data/hub-manifest-schema.json` from the hub
 The theme token list is compared with the panel's `web/src/styles/_tokens.scss` when a checkout of the panel sits
 next to this one.
 
+### Formatting
+
+Code is formatted with black and linted with ruff (settings in `pyproject.toml`; ruff also sorts imports), and mypy
+checks the types. Run `uv run black .` to rewrite files and `uv run black --check .` to check them without changes.
+The same checks run on every commit with pre-commit (run `uvx pre-commit install` once).
+
 ## Links
 
 | | |
