@@ -1,3 +1,5 @@
+"""Tests of the `sudoo-plugin` command line."""
+
 from __future__ import annotations
 
 import json
@@ -12,6 +14,7 @@ from tests.conftest import ProjectFactory
 
 
 def test_new_validate_test_pack(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Test: new validate test pack."""
     target = tmp_path / "alerts"
     assert main(["new", "notification", "com.example.alerts", "--dir", str(target), "--author", "Ann"]) == 0
     assert json.loads((target / "manifest.json").read_text())["author"] == {"name": "Ann"}
@@ -24,6 +27,7 @@ def test_new_validate_test_pack(tmp_path: Path, capsys: pytest.CaptureFixture[st
 
 
 def test_new_refuses_bad_input(tmp_path: Path) -> None:
+    """Test: new refuses bad input."""
     assert main(["new", "theme", "Not An Id", "--dir", str(tmp_path / "x")]) == 1
     (tmp_path / "full").mkdir()
     (tmp_path / "full" / "f").write_text("x")
@@ -33,6 +37,7 @@ def test_new_refuses_bad_input(tmp_path: Path) -> None:
 
 
 def test_pack_stops_on_errors(make_project: ProjectFactory, capsys: pytest.CaptureFixture[str]) -> None:
+    """Test: pack stops on errors."""
     project = make_project("theme", permissions=["docker"])
     assert main(["pack", str(project)]) == 1
     assert "Not packed" in capsys.readouterr().err
@@ -40,6 +45,7 @@ def test_pack_stops_on_errors(make_project: ProjectFactory, capsys: pytest.Captu
 
 
 def test_schema_and_types(capsys: pytest.CaptureFixture[str]) -> None:
+    """Test: schema and types."""
     assert main(["schema"]) == 0
     assert json.loads(capsys.readouterr().out)["title"] == "Sudoo plugin manifest v1"
     assert main(["types"]) == 0
@@ -47,6 +53,7 @@ def test_schema_and_types(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_publish_dry_run(make_project: ProjectFactory, capsys: pytest.CaptureFixture[str]) -> None:
+    """Test: publish dry run."""
     project = make_project("theme", plugin_id="com.example.dry-theme")
     assert main(["publish", str(project), "--dry-run"]) == 0
     out = capsys.readouterr().out
@@ -57,6 +64,7 @@ def test_publish_dry_run(make_project: ProjectFactory, capsys: pytest.CaptureFix
 
 
 def test_publish_needs_a_changelog_and_a_token(make_project: ProjectFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test: publish needs a changelog and a token."""
     project = make_project("theme")
     (project / "CHANGELOG.md").write_text("# Changelog\n")
     assert main(["publish", str(project), "--dry-run"]) == 1
@@ -65,7 +73,26 @@ def test_publish_needs_a_changelog_and_a_token(make_project: ProjectFactory, mon
 
 
 def _hub(known: list[str], seen: list[httpx.Request], status: int = 201) -> httpx.Client:
+    """Make an HTTP client that answers like the hub, and records each request.
+
+    Args:
+        known: The ids of the plugins the developer already has.
+        seen: A list that receives every request.
+        status: The status of the answer to a submission.
+
+    Returns:
+        The client.
+    """
+
     def handler(request: httpx.Request) -> httpx.Response:
+        """Answer one request: the plugin list for GET, the submission result for anything else.
+
+        Args:
+            request: The request.
+
+        Returns:
+            The response.
+        """
         seen.append(request)
         assert request.headers["authorization"] == "Bearer test-token"
         if request.method == "GET":
@@ -80,6 +107,7 @@ def _hub(known: list[str], seen: list[httpx.Request], status: int = 201) -> http
 
 
 def test_publish_new_plugin_and_new_version(make_project: ProjectFactory) -> None:
+    """Test: publish new plugin and new version."""
     project = make_project("theme", plugin_id="com.example.sent-theme")
     assert main(["pack", str(project)]) == 0
     package = project / "dist" / "com.example.sent-theme-0.1.0.sudoo"
@@ -106,6 +134,7 @@ def test_publish_new_plugin_and_new_version(make_project: ProjectFactory) -> Non
 
 
 def test_publish_reports_the_hubs_refusal(make_project: ProjectFactory) -> None:
+    """Test: publish reports the hubs refusal."""
     project = make_project("theme", plugin_id="com.example.refused-theme")
     assert main(["pack", str(project)]) == 0
     package = project / "dist" / "com.example.refused-theme-0.1.0.sudoo"
@@ -114,6 +143,7 @@ def test_publish_reports_the_hubs_refusal(make_project: ProjectFactory) -> None:
 
 
 def test_hub_address_rules(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test: hub address rules."""
     monkeypatch.delenv("SUDOO_HUB_URL", raising=False)
     assert hub_url(None) == "https://hub.sudoo.sh"
     assert hub_url("http://localhost:8000/") == "http://localhost:8000"
@@ -122,6 +152,7 @@ def test_hub_address_rules(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_changelog_entry(tmp_path: Path) -> None:
+    """Test: changelog entry."""
     (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n## [1.1.0] - 2026-11-01\n\n- B\n\n## 1.0.0\n\n- A\n")
     assert changelog_entry(tmp_path, "1.1.0") == "- B"
     assert changelog_entry(tmp_path, "1.0.0") == "- A"

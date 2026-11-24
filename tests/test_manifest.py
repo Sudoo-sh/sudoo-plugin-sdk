@@ -1,6 +1,9 @@
-"""The manifest model must accept and refuse exactly what the hub does: these cases mirror the hub's own tests,
+"""Tests of the manifest model against the hub's rules.
+
+The manifest model must accept and refuse exactly what the hub does: these cases mirror the hub's own tests,
 and the JSON Schema must be the one the hub serves (tests/data/hub-manifest-schema.json, produced by the hub's
-hub.schemas.manifest.json_schema(); refresh it when the hub's model changes)."""
+hub.schemas.manifest.json_schema(); refresh it when the hub's model changes).
+"""
 
 from __future__ import annotations
 
@@ -63,12 +66,21 @@ EXAMPLE: dict[str, Any] = {  # the example of ROADMAP section 11
 
 
 def _with(**changes: Any) -> dict[str, Any]:
+    """Copy the example manifest with some fields changed.
+
+    Args:
+        **changes: The fields to set.
+
+    Returns:
+        The manifest data.
+    """
     manifest = copy.deepcopy(EXAMPLE)
     manifest.update(changes)
     return manifest
 
 
 def test_the_roadmap_example_is_valid() -> None:
+    """Test: the roadmap example is valid."""
     manifest = Manifest.model_validate(EXAMPLE)
     assert manifest.id == "com.sudoo.smtp"
     assert manifest.model_dump(by_alias=True, mode="json")["$schema"] == SCHEMA_URL
@@ -109,6 +121,7 @@ def test_the_roadmap_example_is_valid() -> None:
     ],
 )
 def test_invalid_manifests_are_refused(changes: dict[str, Any]) -> None:
+    """Test: invalid manifests are refused."""
     with pytest.raises(ValidationError):
         Manifest.model_validate(_with(**changes))
 
@@ -127,6 +140,7 @@ def test_invalid_manifests_are_refused(changes: dict[str, Any]) -> None:
     ],
 )
 def test_a_trailing_newline_is_refused(changes: dict[str, Any]) -> None:
+    """Test: a trailing newline is refused."""
     with pytest.raises(ValidationError):
         Manifest.model_validate(_with(**changes))
 
@@ -143,31 +157,37 @@ def test_a_trailing_newline_is_refused(changes: dict[str, Any]) -> None:
     ],
 )
 def test_invalid_settings_are_refused(setting: dict[str, Any]) -> None:
+    """Test: invalid settings are refused."""
     with pytest.raises(ValidationError):
         Manifest.model_validate(_with(settings=[setting]))
 
 
 def test_duplicate_setting_keys_are_refused() -> None:
+    """Test: duplicate setting keys are refused."""
     setting = {"key": "host", "type": "string", "label": "Host"}
     with pytest.raises(ValidationError):
         Manifest.model_validate(_with(settings=[setting, setting]))
 
 
 def test_paid_plugin_with_price() -> None:
+    """Test: paid plugin with price."""
     assert Manifest.model_validate(_with(tier="paid", price=2900)).price == 2900
 
 
 def test_requirements_as_bare_ids_or_objects() -> None:
+    """Test: requirements as bare ids or objects."""
     manifest = Manifest.model_validate(_with(requires=["com.sudoo.api", {"id": "com.sudoo.mcp", "version": ">=1.0.0"}]))
     assert [(r.id, r.version) for r in manifest.requires] == [("com.sudoo.api", None), ("com.sudoo.mcp", ">=1.0.0")]
 
 
 def test_fourteen_permissions_each_described() -> None:
+    """Test: fourteen permissions each described."""
     assert len(PERMISSIONS) == 14
     assert set(PERMISSIONS) == set(PERMISSION_DESCRIPTIONS)
 
 
 def test_semver_order() -> None:
+    """Test: semver order."""
     versions = ["1.0.0", "1.10.0", "1.9.0", "1.10.0-rc.1", "1.10.0-alpha", "2.0.0-beta.2", "2.0.0-beta.11"]
     assert sorted(versions, key=semver_key) == [
         "1.0.0",
@@ -192,16 +212,19 @@ def test_semver_order() -> None:
     ],
 )
 def test_satisfies(version: str, specifier: str | None, expected: bool) -> None:
+    """Test: satisfies."""
     assert satisfies(version, specifier) is expected
 
 
 def test_the_json_schema_is_the_hubs() -> None:
+    """Test: the json schema is the hubs."""
     hub = json.loads((Path(__file__).parent / "data" / "hub-manifest-schema.json").read_text())
     assert json.loads(json.dumps(json_schema())) == hub
     assert hub["$id"] == SCHEMA_URL
 
 
 def test_parse_and_load(tmp_path: Path) -> None:
+    """Test: parse and load."""
     (tmp_path / "manifest.json").write_text(json.dumps(EXAMPLE))
     assert load_manifest(tmp_path).id == "com.sudoo.smtp"
     with pytest.raises(ManifestError):

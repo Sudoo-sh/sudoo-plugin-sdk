@@ -33,11 +33,24 @@ SDK_GIT_URL = "https://github.com/Sudoo-sh/sudoo-plugin-sdk"
 
 
 class ScaffoldError(ValueError):
+    """The project cannot be created; the message says why."""
+
     pass
 
 
 @dataclass(frozen=True)
 class Names:
+    """The names derived from a plugin id.
+
+    Attributes:
+        plugin_id: The plugin's id.
+        entry: The entry point name: the id's last part, for example "midnight-theme" (at most 41 characters).
+        module: The Python package name, for example "example_midnight_theme".
+        distribution: The distribution name, for example "sudoo-plugin-midnight-theme".
+        title: A readable title, for example "Midnight theme".
+        class_name: The plugin class name, for example "MidnightTheme".
+    """
+
     plugin_id: str
     entry: str  # entry-point name: the id's last part, "midnight-theme"
     module: str  # Python package: "example_midnight_theme"
@@ -47,6 +60,17 @@ class Names:
 
 
 def names_for(plugin_id: str) -> Names:
+    """Derive the names of a plugin project from its id.
+
+    Args:
+        plugin_id: The plugin's id.
+
+    Returns:
+        The names.
+
+    Raises:
+        ScaffoldError: When the id does not match the plugin id pattern.
+    """
     if not re.fullmatch(PLUGIN_ID, plugin_id):
         raise ScaffoldError(
             f"{plugin_id!r} is not a plugin id: reverse domain, lower case, at least three parts (com.example.backup)."
@@ -65,6 +89,11 @@ def names_for(plugin_id: str) -> Names:
 
 
 def sdk_requirement() -> str:
+    """The SDK version specifier written into new projects.
+
+    Returns:
+        A specifier from the running version up to, not including, the next major version.
+    """
     major = int(__version__.split(".")[0])
     return f">={__version__},<{major + 1}.0.0"
 
@@ -87,6 +116,14 @@ _PLACEHOLDERS = {"str": '""', "bool": "False", "int": "60", "str | None": "None"
 
 
 def _imports_for(annotations: list[str]) -> list[str]:
+    """Make the import lines for the names used in some annotations.
+
+    Args:
+        annotations: Annotation texts.
+
+    Returns:
+        Sorted import lines. A name is taken from the first of the known modules that has it; built-in names need no import.
+    """
     wanted: dict[str, set[str]] = {}
     for text in annotations:
         for name in sorted(set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", text))):
@@ -100,6 +137,15 @@ def _imports_for(annotations: list[str]) -> list[str]:
 
 
 def _render_method(protocol: type, name: str) -> tuple[str, list[str]]:
+    """Write one interface method as a stub that raises NotImplementedError.
+
+    Args:
+        protocol: The Protocol class.
+        name: The method's name.
+
+    Returns:
+        The method's source, and the annotation texts it uses.
+    """
     function = protocol.__dict__[name]
     signature = inspect.signature(function)
     params: list[str] = []
@@ -128,6 +174,15 @@ def _render_method(protocol: type, name: str) -> tuple[str, list[str]]:
 
 
 def render_plugin_class(plugin_type: str, names: Names) -> str:
+    """Write plugin.py for a plugin type, from the interface of its entry-point group.
+
+    Args:
+        plugin_type: The plugin type.
+        names: The names of the project.
+
+    Returns:
+        The source of the module.
+    """
     group = BY_TYPE[plugin_type]
     protocol: Any = getattr(plugins, group.interface)
     attributes: list[str] = []
@@ -195,6 +250,16 @@ class {class_name}(Theme):
 
 
 def manifest_for(plugin_type: str, names: Names, author: str) -> dict[str, Any]:
+    """Make the manifest of a new project.
+
+    Args:
+        plugin_type: The plugin type.
+        names: The names of the project.
+        author: The author's name.
+
+    Returns:
+        The manifest as a dictionary, checked against the `Manifest` model.
+    """
     group = BY_TYPE[plugin_type]
     data: dict[str, Any] = {
         "$schema": SCHEMA_URL,
@@ -219,6 +284,15 @@ def manifest_for(plugin_type: str, names: Names, author: str) -> dict[str, Any]:
 
 
 def pyproject_for(names: Names, manifest: dict[str, Any]) -> str:
+    """Make the pyproject.toml of a new project.
+
+    Args:
+        names: The names of the project.
+        manifest: The manifest data made for it.
+
+    Returns:
+        The file's text.
+    """
     entry_points = "\n".join(
         f'[project.entry-points."{group}"]\n' + "\n".join(f'{name} = "{target}"' for name, target in entries.items())
         for group, entries in manifest["entry_points"].items()
@@ -265,6 +339,15 @@ known-first-party = ["{names.module}"]
 
 
 def test_for(plugin_type: str, names: Names) -> str:
+    """Make the starter test file of a new project.
+
+    Args:
+        plugin_type: The plugin type.
+        names: The names of the project.
+
+    Returns:
+        The file's text. A theme gets checks of the theme; other types get an interface check.
+    """
     group = BY_TYPE[plugin_type]
     if plugin_type == "theme":
         return f"""from {names.module}.plugin import {names.class_name}
@@ -352,7 +435,21 @@ dist/
 
 
 def scaffold(plugin_type: str, plugin_id: str, target: Path, *, author: str = "Your name", year: int = 2026) -> Path:
-    """Write a new plugin project into `target` (which must not exist or be empty); returns it."""
+    """Write a new plugin project into `target`.
+
+    Args:
+        plugin_type: The plugin type.
+        plugin_id: The plugin's id.
+        target: The folder to create. It must not exist or must be empty.
+        author: The author's name for the manifest and the licence.
+        year: The year for the licence.
+
+    Returns:
+        The target folder.
+
+    Raises:
+        ScaffoldError: When the type is unknown, the folder is not empty or the id is not valid.
+    """
     if plugin_type not in PLUGIN_TYPES:
         raise ScaffoldError(f"{plugin_type!r} is not a plugin type. Types: {', '.join(PLUGIN_TYPES)}.")
     if target.exists() and any(target.iterdir()):

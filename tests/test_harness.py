@@ -1,3 +1,5 @@
+"""Tests of the fake panel in `sudoo_plugin_sdk.testing`."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,6 +13,7 @@ from tests.test_manifest import EXAMPLE
 
 
 def test_context_from_a_manifest(tmp_path: Path) -> None:
+    """Test: context from a manifest."""
     manifest = Manifest.model_validate(EXAMPLE)
     context = make_context(manifest, data_dir=tmp_path / "data", settings={"smtp_host": "mail.example.test"})
     assert context.plugin_id == "com.sudoo.smtp" and context.version == "1.0.0"
@@ -23,6 +26,7 @@ def test_context_from_a_manifest(tmp_path: Path) -> None:
 
 
 def test_context_capabilities_follow_permissions(tmp_path: Path) -> None:
+    """Test: context capabilities follow permissions."""
     context = make_context(
         "com.example.x", permissions={"storage.read", "storage.write", "secrets", "mail.send"}, data_dir=tmp_path
     )
@@ -35,11 +39,13 @@ def test_context_capabilities_follow_permissions(tmp_path: Path) -> None:
 
 
 def test_make_context_needs_a_folder() -> None:
+    """Test: make context needs a folder."""
     with pytest.raises(ValueError, match="data_dir"):
         make_context("com.example.x")
 
 
 def test_services_check_permissions_and_record(tmp_path: Path) -> None:
+    """Test: services check permissions and record."""
     services = FakeServices()
     services.instances.add("sales-main")
     viewer = person("instances.view")
@@ -58,6 +64,7 @@ def test_services_check_permissions_and_record(tmp_path: Path) -> None:
 
 
 def test_plugin_caller_gets_what_its_permissions_allow(tmp_path: Path) -> None:
+    """Test: plugin caller gets what its permissions allow."""
     services = FakeServices()
     services.instances.add("sales-main")
     reader = make_context("com.example.r", permissions={"instances.read"}, services=services, data_dir=tmp_path)
@@ -71,6 +78,7 @@ def test_plugin_caller_gets_what_its_permissions_allow(tmp_path: Path) -> None:
 
 
 def test_create_delete_and_events(tmp_path: Path) -> None:
+    """Test: create delete and events."""
     services = FakeServices()
     seen: list[str] = []
     stop = services.events.subscribe(["instance.created", "instance.deleted"], lambda e: seen.append(e["kind"]))
@@ -85,6 +93,7 @@ def test_create_delete_and_events(tmp_path: Path) -> None:
 
 
 def test_backups_listing_rules() -> None:
+    """Test: backups listing rules."""
     services = FakeServices()
     services.backups.add("a.zip", "sales-main")
     services.backups.add("b.zip", "other", version="18.0")
@@ -97,6 +106,7 @@ def test_backups_listing_rules() -> None:
 
 
 def test_storage_change_is_atomic_style() -> None:
+    """Test: storage change is atomic style."""
     storage = MemoryStorage()
     storage.put("tokens", "a", {"n": 1})
     storage.change("tokens", "a", lambda d: {"n": (d or {}).get("n", 0) + 1})
@@ -107,6 +117,7 @@ def test_storage_change_is_atomic_style() -> None:
 
 
 def test_settings_types() -> None:
+    """Test: settings types."""
     settings = PluginSettings({"port": 587, "on": True, "ratio": 0.5, "name": None})
     assert settings.integer("port") == 587 and settings.boolean("on") and settings.number("ratio") == 0.5
     assert settings.string("name", "x") == "x"
@@ -118,5 +129,6 @@ def test_settings_types() -> None:
 
 
 def test_caller() -> None:
+    """Test: caller."""
     caller = Caller("api:ci", frozenset({"instances.view"}), via="token", token_id="t1")
     assert caller.can("instances.view") and not caller.can("instances.delete")

@@ -29,12 +29,18 @@ from pathlib import Path
 from sudoo_plugin_sdk.manifest import MANIFEST_NAME, Manifest, parse_manifest
 from sudoo_plugin_sdk.signing import sha256_of
 
+# The file extension of a package.
 EXTENSION = ".sudoo"
+# The timestamp written for every file in a package: 1980-01-01 00:00:00.
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
+# The permission bits written for every file in a package: a regular file, mode 0644.
 FILE_MODE = 0o100644
 # The hub's limits (hub.sudoo.sh defaults): larger packages are refused there.
+# The largest package the hub accepts, in bytes (25 MB).
 MAX_PACKAGE_BYTES = 25 * 1024 * 1024
+# The most files the hub accepts in a package.
 MAX_PACKAGE_FILES = 5000
+# The most bytes the files of a package may add up to (200 MB).
 MAX_UNPACKED_BYTES = 200 * 1024 * 1024
 
 # The hub's forbidden_files check: any of these fails the submission.
@@ -60,9 +66,13 @@ FORBIDDEN: tuple[str, ...] = (
 # Compiled or native files: allowed, but the hub flags them for the reviewer.
 COMPILED: tuple[str, ...] = ("*.so", "*.dll", "*.dylib", "*.exe", "*.bin")
 # Left out silently: caches and editor files.
+# Folders that are left out of a package without a message.
 IGNORED_DIRS = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules"})
+# File name patterns that are left out of a package without a message.
 IGNORED_FILES: tuple[str, ...] = ("*.pyc", "*.pyo", ".DS_Store", "Thumbs.db", "*~", "*.swp")
+# Patterns of the files in the project's root that go into the package.
 TOP_LEVEL_FILES: tuple[str, ...] = ("pyproject.toml", "README*", "CHANGELOG*", "LICENSE*", "NOTICE*")
+# The folders of the project whose files go into the package.
 TREES: tuple[str, ...] = ("src", "assets")
 
 
@@ -72,13 +82,31 @@ class PackError(ValueError):
 
 @dataclass
 class Contents:
+    """What a package would hold, and what is wrong with it.
+
+    Attributes:
+        files: The files to include: archive name to file on disk.
+        errors: Problems that stop the build.
+        warnings: Problems that do not stop the build.
+    """
+
     files: dict[str, Path] = field(default_factory=dict)  # archive name -> file on disk
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
 
 def matches(name: str, patterns: Sequence[str]) -> bool:
-    """A path matches "x/*" when it is anywhere under a folder x, other patterns by its base name (the hub's rule)."""
+    """Tell whether a path matches any pattern.
+
+    A path matches "x/*" when it is anywhere under a folder x; other patterns match by the base name (the hub's rule).
+
+    Args:
+        name: The path inside the package, with forward slashes.
+        patterns: The patterns to try.
+
+    Returns:
+        True when one of them matches.
+    """
     base, padded = name.rsplit("/", 1)[-1], "/" + name
     for pattern in patterns:
         if pattern.endswith("/*"):
@@ -90,6 +118,15 @@ def matches(name: str, patterns: Sequence[str]) -> bool:
 
 
 def _walk(root: Path, folder: Path) -> Iterable[Path]:
+    """List the files below a folder, sorted, skipping ignored folders and not following symbolic links to folders.
+
+    Args:
+        root: The project folder.
+        folder: The folder to walk.
+
+    Yields:
+        Each path found.
+    """
     for path in sorted(folder.iterdir()):
         if path.is_dir() and not path.is_symlink():
             if path.name in IGNORED_DIRS:
@@ -115,6 +152,12 @@ def collect(project: Path, manifest: Manifest) -> Contents:
     project = project.resolve()
 
     def add(path: Path, required: bool = False) -> None:
+        """Check one file and add it to the contents, or record why not.
+
+        Args:
+            path: The file.
+            required: When True a missing file is an error.
+        """
         if not path.exists() and not path.is_symlink():
             if required:
                 contents.errors.append(f"{path.relative_to(project).as_posix()} does not exist.")
@@ -179,6 +222,16 @@ def build(files: dict[str, Path], *, compress: bool = False) -> bytes:
 
 @dataclass(frozen=True)
 class Packed:
+    """The result of building a package.
+
+    Attributes:
+        path: Where the package was written.
+        sha256: The package's SHA-256, as hex.
+        size: The package's size in bytes.
+        files: How many files it holds.
+        warnings: The warnings of the build.
+    """
+
     path: Path
     sha256: str
     size: int
@@ -187,11 +240,35 @@ class Packed:
 
 
 def package_name(manifest: Manifest) -> str:
+    """The file name of a plugin's package.
+
+    Args:
+        manifest: The plugin's manifest.
+
+    Returns:
+        "<id>-<version>.sudoo".
+    """
     return f"{manifest.id}-{manifest.version}{EXTENSION}"
 
 
 def pack(project: Path, manifest: Manifest, out_dir: Path | None = None, *, compress: bool = False) -> Packed:
-    """Write dist/<id>-<version>.sudoo (or into `out_dir`); PackError lists what stops it."""
+    """Write dist/<id>-<version>.sudoo (or into `out_dir`); PackError lists what stops it.
+
+    Args:
+        project: The plugin's folder.
+        manifest: The plugin's manifest.
+        out_dir: The folder to write to; the project's "dist" folder when None.
+        compress: True to deflate the entries instead of storing them.
+
+    Returns:
+        Facts about the package written.
+
+    Raises:
+        PackError: When the contents have errors or the package is larger than `MAX_PACKAGE_BYTES`.
+
+    Side effects:
+        Creates the folder if needed and writes the package file.
+    """
     contents = collect(project, manifest)
     if contents.errors:
         raise PackError("\n".join(contents.errors))
