@@ -92,6 +92,15 @@ _VAR_RE = re.compile(r"var\(\s*(--[A-Za-z0-9-]+)")
 
 @dataclass
 class ThemeReport:
+    """The result of checking a theme.
+
+    Attributes:
+        errors: Problems that make the theme invalid.
+        warnings: Problems that are only reported.
+        light: The values of the light mode.
+        dark: The values of the dark mode.
+    """
+
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     light: dict[str, str] = field(default_factory=dict)
@@ -99,6 +108,11 @@ class ThemeReport:
 
     @property
     def ok(self) -> bool:
+        """Tell whether there are no errors.
+
+        Returns:
+            True when `errors` is empty.
+        """
         return not self.errors
 
 
@@ -106,8 +120,14 @@ class ThemeReport:
 
 
 def parse_colour(value: str) -> tuple[float, float, float] | None:
-    """(r, g, b) in 0..1 of #rgb, #rrggbb, #rrggbbaa (alpha ignored), rgb() or rgba(); None for anything else
-    (var(), color-mix(), names), which is then not checked for contrast."""
+    """Read a colour value.
+
+    Args:
+        value: The colour text.
+
+    Returns:
+        Red, green and blue from 0 to 1, or None for anything that is not understood.
+    """
     text = value.strip().lower()
     match = re.fullmatch(r"#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})", text)
     if match:
@@ -123,9 +143,24 @@ def parse_colour(value: str) -> tuple[float, float, float] | None:
 
 
 def luminance(rgb: tuple[float, float, float]) -> float:
-    """WCAG 2 relative luminance."""
+    """Compute the WCAG 2 relative luminance of a colour.
+
+    Args:
+        rgb: Red, green and blue, each from 0 to 1.
+
+    Returns:
+        The relative luminance.
+    """
 
     def channel(c: float) -> float:
+        """Convert one colour channel to linear light.
+
+        Args:
+            c: The channel value from 0 to 1.
+
+        Returns:
+            The linear value.
+        """
         return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
 
     r, g, b = (channel(c) for c in rgb)
@@ -133,7 +168,15 @@ def luminance(rgb: tuple[float, float, float]) -> float:
 
 
 def contrast(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
-    """WCAG 2 contrast ratio, 1 to 21."""
+    """Compute the WCAG contrast ratio of two colours.
+
+    Args:
+        a: The first colour as red, green and blue from 0 to 1.
+        b: The second colour in the same form.
+
+    Returns:
+        The ratio, 1 or more.
+    """
     la, lb = sorted((luminance(a), luminance(b)), reverse=True)
     return (la + 0.05) / (lb + 0.05)
 
@@ -148,16 +191,40 @@ _DARK_TOGGLE = ':root[data-theme="dark"]'
 
 
 def _normalise_selector(text: str) -> str:
+    """Make selector text comparable: single quotes become double quotes and white space collapses.
+
+    Args:
+        text: The selector.
+
+    Returns:
+        The normalised selector.
+    """
     return re.sub(r"\s+", " ", text.replace("'", '"')).strip()
 
 
 def _normalise_media(text: str) -> str:
+    """Make a media query comparable: lower case, white space collapsed and no space inside parentheses.
+
+    Args:
+        text: The media query.
+
+    Returns:
+        The normalised text.
+    """
     text = re.sub(r"\s+", " ", text.strip().lower())
     return text.replace("( ", "(").replace(" )", ")").replace(" :", ":")
 
 
 def _split_blocks(css: str, report: ThemeReport) -> list[tuple[str, str]] | None:
-    """[(prelude, body)] at one level; None after an error (unbalanced braces)."""
+    """Split CSS into top-level rules.
+
+    Args:
+        css: The CSS text.
+        report: The report that receives errors.
+
+    Returns:
+        The prelude and the body of each rule, or None after an error.
+    """
     blocks: list[tuple[str, str]] = []
     position = 0
     while True:
@@ -183,6 +250,16 @@ def _split_blocks(css: str, report: ThemeReport) -> list[tuple[str, str]] | None
 
 
 def _declarations(body: str, where: str, report: ThemeReport) -> dict[str, str]:
+    """Read the declarations of one rule.
+
+    Args:
+        body: The text between the braces.
+        where: A name of the rule, for messages.
+        report: The report that receives errors and warnings.
+
+    Returns:
+        The values by token name. Tokens that are not allowed are reported and left out.
+    """
     found: dict[str, str] = {}
     if "{" in body or "}" in body:
         report.errors.append(f"{where}: nested rules are not allowed.")
@@ -232,8 +309,15 @@ def _declarations(body: str, where: str, report: ThemeReport) -> dict[str, str]:
 
 
 def _strip_comments(css: str, report: ThemeReport) -> str | None:
-    """`css` without its /* comments */, read the way a browser does: a quoted string is text, not a comment, so
-    "/*" in a string starts nothing. Comment markers inside a string are refused outright. None after an error."""
+    """Remove the comments from CSS.
+
+    Args:
+        css: The CSS text.
+        report: The report that receives errors.
+
+    Returns:
+        The CSS without comments, or None after an error.
+    """
     out: list[str] = []
     position = 0
     while position < len(css):
@@ -264,7 +348,14 @@ def _strip_comments(css: str, report: ThemeReport) -> str | None:
 
 
 def check_tokens_css(css: str) -> ThemeReport:
-    """Check a theme's tokens file; the report has the light and dark values on success."""
+    """Check a tokens file.
+
+    Args:
+        css: The CSS text.
+
+    Returns:
+        The report, with the light and dark values when there are no errors.
+    """
     report = ThemeReport()
     if len(css.encode()) > MAX_TOKENS_BYTES:
         report.errors.append("The tokens file is larger than 32 KB.")
@@ -340,6 +431,16 @@ def check_tokens_css(css: str) -> ThemeReport:
 
 
 def _resolve(values: dict[str, str], name: str, depth: int = 0) -> str | None:
+    """Find the value of a token, following `var(--other)` references.
+
+    Args:
+        values: The token values.
+        name: The token to look up.
+        depth: How many references were followed so far; after 5 the result is None.
+
+    Returns:
+        The value, or None when it is missing or the chain is too long.
+    """
     value = values.get(name)
     if value is None or depth > 5:
         return None
@@ -348,6 +449,13 @@ def _resolve(values: dict[str, str], name: str, depth: int = 0) -> str | None:
 
 
 def _check_contrast(report: ThemeReport, mode: str, values: dict[str, str]) -> None:
+    """Check the contrast of each pair in `CONTRAST_PAIRS`.
+
+    Args:
+        report: The report that receives errors and warnings.
+        mode: "light" or "dark", for messages.
+        values: The token values, panel defaults included.
+    """
     for foreground, background, minimum, required in CONTRAST_PAIRS:
         fg_text, bg_text = _resolve(values, foreground), _resolve(values, background)
         fg = parse_colour(fg_text) if fg_text else None
@@ -401,16 +509,42 @@ _NON_LOCAL_URL_RE = re.compile(r"url\(\s*(?!['\"]?\s*#)", re.IGNORECASE)
 
 
 def _local(tag: str) -> str:
+    """Return the lower-case local name of an XML tag or attribute.
+
+    Args:
+        tag: The name, possibly with a namespace in braces.
+
+    Returns:
+        The name without the namespace.
+    """
     return tag.rsplit("}", 1)[-1].lower()
 
 
 def _external_url(text: str) -> bool:
+    """Tell whether a text holds a url() that points outside the document.
+
+    Args:
+        text: The attribute value.
+
+    Returns:
+        True when a url() does not point to a "#" fragment.
+    """
     return any(not target.strip().startswith("#") for _, target in _URL_RE.findall(text)) or bool(
         _NON_LOCAL_URL_RE.search(text)
     )
 
 
 def _attribute_problem(element: str, attribute: str, value: str) -> str | None:
+    """Check one attribute of a logo element.
+
+    Args:
+        element: The element's local name, for messages.
+        attribute: The attribute's name.
+        value: The attribute's value.
+
+    Returns:
+        A message, or None when the attribute is allowed.
+    """
     local = _local(attribute)
     if local.startswith("on"):
         return f"The event handler {local} is not allowed."
@@ -433,10 +567,14 @@ def _attribute_problem(element: str, attribute: str, value: str) -> str | None:
 
 
 def check_logo_svg(data: bytes) -> list[str]:
-    """What is wrong with a logo SVG (an empty list when it is safe). Only SVG shapes, text, gradients, clips,
-    masks and simple filters with presentation attributes are allowed: no scripts, <style>, event handlers, links,
-    embedded documents, animations, elements outside the SVG namespace or references outside the file. The SDK
-    refuses rather than rewriting a file."""
+    """Check a logo file.
+
+    Args:
+        data: The file's bytes.
+
+    Returns:
+        The sorted problems, empty when the logo is allowed.
+    """
     problems: list[str] = []
     if len(data) > MAX_LOGO_BYTES:
         return ["The logo is larger than 64 KB."]
@@ -478,7 +616,14 @@ def check_logo_svg(data: bytes) -> list[str]:
 
 
 def check_email_accent(value: str) -> tuple[list[str], list[str]]:
-    """(errors, warnings) of an e-mail accent: #RRGGBB, readable as a button with white text."""
+    """Check an e-mail accent colour.
+
+    Args:
+        value: The colour text.
+
+    Returns:
+        The errors and the warnings.
+    """
     if not EMAIL_ACCENT_RE.fullmatch(value):
         return [f"email_accent {value!r} must be a colour as #RRGGBB."], []
     rgb = parse_colour(value)
@@ -493,7 +638,9 @@ def check_email_accent(value: str) -> tuple[list[str], list[str]]:
 
 
 class Theme(SudooPlugin):
-    """Subclass, set the class attributes, register under sudoo.themes. File paths are relative to the folder of
+    """Base class of theme plugins.
+
+    Subclass, set the class attributes, register under sudoo.themes. File paths are relative to the folder of
     the module that defines the subclass, and are shipped with it in src/.
 
         class Midnight(Theme):
@@ -510,10 +657,26 @@ class Theme(SudooPlugin):
 
     @classmethod
     def folder(cls) -> Path:
+        """The folder of the module that defines the theme class.
+
+        Returns:
+            The folder.
+        """
         return Path(inspect.getfile(cls)).resolve().parent
 
     @classmethod
     def _file(cls, relative: str) -> Path:
+        """Resolve a file path relative to the theme's folder.
+
+        Args:
+            relative: The path.
+
+        Returns:
+            The absolute path.
+
+        Raises:
+            ValueError: When the path is outside the theme's folder.
+        """
         folder = cls.folder()
         path = (folder / relative).resolve()
         if not path.is_relative_to(folder):
@@ -522,15 +685,29 @@ class Theme(SudooPlugin):
 
     @classmethod
     def tokens_css(cls) -> str:
+        """Read the tokens file.
+
+        Returns:
+            The CSS text.
+        """
         return cls._file(cls.tokens).read_text(encoding="utf-8")
 
     @classmethod
     def logo_svg(cls) -> bytes | None:
+        """Read the logo file.
+
+        Returns:
+            The bytes, or None when the theme has no logo.
+        """
         return None if cls.logo is None else cls._file(cls.logo).read_bytes()
 
     @classmethod
     def check(cls) -> ThemeReport:
-        """Everything about the theme: the tokens file, the logo and the e-mail accent."""
+        """Check the tokens file, the logo and the e-mail accent.
+
+        Returns:
+            The report.
+        """
         try:
             report = check_tokens_css(cls.tokens_css())
         except (OSError, ValueError) as error:

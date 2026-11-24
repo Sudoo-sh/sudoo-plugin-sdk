@@ -10,6 +10,9 @@ says which SDK versions it was written for.
 
 - Formatting and lint setup: black, ruff and mypy now run on every commit with pre-commit, and an `.editorconfig` is
   added. The existing code is unchanged. No behaviour change.
+- Docstrings on every module, class, function and method (Google style), and ruff's docstring rules (`D`) so new
+  code keeps them. Code is unchanged. `sudoo-plugin new` now copies a short description into every generated method
+  stub.
 
 ## 0.1.1 - 2026-11-19
 

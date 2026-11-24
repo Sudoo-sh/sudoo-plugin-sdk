@@ -1,3 +1,5 @@
+"""Tests of package building."""
+
 from __future__ import annotations
 
 import os
@@ -12,11 +14,20 @@ from tests.conftest import ProjectFactory
 
 
 def _entries(path: Path) -> list[zipfile.ZipInfo]:
+    """List the entries of a zip file.
+
+    Args:
+        path: The zip file.
+
+    Returns:
+        The entries.
+    """
     with zipfile.ZipFile(path) as archive:
         return archive.infolist()
 
 
 def test_pack_is_deterministic(make_project: ProjectFactory, tmp_path: Path) -> None:
+    """Test: pack is deterministic."""
     project = make_project("theme", "com.example.same-theme")
     manifest = load_manifest(project)
     first = pack(project, manifest, tmp_path / "a")
@@ -34,6 +45,7 @@ def test_pack_is_deterministic(make_project: ProjectFactory, tmp_path: Path) -> 
 
 
 def test_entries_are_sorted_fixed_and_plain(make_project: ProjectFactory, tmp_path: Path) -> None:
+    """Test: entries are sorted fixed and plain."""
     project = make_project("theme", "com.example.plain-theme")
     packed = pack(project, load_manifest(project), tmp_path)
     entries = _entries(packed.path)
@@ -51,6 +63,7 @@ def test_entries_are_sorted_fixed_and_plain(make_project: ProjectFactory, tmp_pa
 
 
 def test_compressed_packages_are_deterministic_too(make_project: ProjectFactory, tmp_path: Path) -> None:
+    """Test: compressed packages are deterministic too."""
     project = make_project("theme")
     manifest = load_manifest(project)
     one = pack(project, manifest, tmp_path / "1", compress=True)
@@ -61,6 +74,7 @@ def test_compressed_packages_are_deterministic_too(make_project: ProjectFactory,
 
 @pytest.mark.parametrize("name", [".env", "deploy.pem", "id_ed25519", "server.key"])
 def test_forbidden_files_stop_the_build(make_project: ProjectFactory, name: str, tmp_path: Path) -> None:
+    """Test: forbidden files stop the build."""
     project = make_project("theme")
     (project / "src" / name).write_text("secret")
     with pytest.raises(PackError, match="must not be in a package"):
@@ -68,6 +82,7 @@ def test_forbidden_files_stop_the_build(make_project: ProjectFactory, name: str,
 
 
 def test_links_are_refused(make_project: ProjectFactory, tmp_path: Path) -> None:
+    """Test: links are refused."""
     project = make_project("theme")
     (project / "assets").mkdir()
     (project / "assets" / "link").symlink_to(project / "README.md")
@@ -76,6 +91,14 @@ def test_links_are_refused(make_project: ProjectFactory, tmp_path: Path) -> None
 
 
 def _outside(tmp_path: Path) -> Path:
+    """Make a folder with files that are not part of a project.
+
+    Args:
+        tmp_path: The temporary folder.
+
+    Returns:
+        The new folder.
+    """
     folder = tmp_path / "outside"
     folder.mkdir()
     (folder / "hosts.yml").write_text("token: not-for-the-package\n")
@@ -85,6 +108,7 @@ def _outside(tmp_path: Path) -> Path:
 
 @pytest.mark.parametrize("tree", ["assets", "src"])
 def test_linked_trees_are_refused(make_project: ProjectFactory, tmp_path: Path, tree: str) -> None:
+    """Test: linked trees are refused."""
     project = make_project("theme")
     outside = _outside(tmp_path)
     if (project / tree).exists():
@@ -98,6 +122,7 @@ def test_linked_trees_are_refused(make_project: ProjectFactory, tmp_path: Path, 
 
 
 def test_files_inside_a_linked_folder_are_refused(make_project: ProjectFactory, tmp_path: Path) -> None:
+    """Test: files inside a linked folder are refused."""
     project = make_project("theme", long_description_file="docs/notes.md")
     (project / "docs").symlink_to(os.path.relpath(_outside(tmp_path), project))
     contents = collect(project, load_manifest(project))
@@ -106,6 +131,7 @@ def test_files_inside_a_linked_folder_are_refused(make_project: ProjectFactory, 
 
 
 def test_linked_folders_below_a_tree_are_refused(make_project: ProjectFactory, tmp_path: Path) -> None:
+    """Test: linked folders below a tree are refused."""
     project = make_project("theme")
     (project / "assets").mkdir()
     (project / "assets" / "more").symlink_to(_outside(tmp_path), target_is_directory=True)
@@ -115,6 +141,7 @@ def test_linked_folders_below_a_tree_are_refused(make_project: ProjectFactory, t
 
 
 def test_a_project_opened_through_a_link_still_packs(make_project: ProjectFactory, tmp_path: Path) -> None:
+    """Test: a project opened through a link still packs."""
     project = make_project("theme")
     link = tmp_path / "linked-project"
     link.symlink_to(project, target_is_directory=True)
@@ -122,6 +149,7 @@ def test_a_project_opened_through_a_link_still_packs(make_project: ProjectFactor
 
 
 def test_compiled_files_are_a_warning(make_project: ProjectFactory) -> None:
+    """Test: compiled files are a warning."""
     project = make_project("theme")
     (project / "src" / "native.so").write_bytes(b"\x7fELF")
     contents = collect(project, load_manifest(project))
@@ -130,18 +158,21 @@ def test_compiled_files_are_a_warning(make_project: ProjectFactory) -> None:
 
 
 def test_missing_declared_files(make_project: ProjectFactory, tmp_path: Path) -> None:
+    """Test: missing declared files."""
     project = make_project("theme", icon="icon.svg")
     with pytest.raises(PackError, match=r"icon\.svg does not exist"):
         pack(project, load_manifest(project), tmp_path)
 
 
 def test_hub_pattern_rule() -> None:
+    """Test: hub pattern rule."""
     assert matches("src/.git/config", (".git/*",))
     assert matches("a/b/.env.local", (".env.*",))
     assert not matches("src/environment.py", (".env",))
 
 
 def test_read_manifest_errors(tmp_path: Path) -> None:
+    """Test: read manifest errors."""
     path = tmp_path / "x.sudoo"
     path.write_bytes(b"not a zip")
     with pytest.raises(ValueError, match=r"not a \.sudoo package"):

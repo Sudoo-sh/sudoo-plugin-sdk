@@ -14,6 +14,18 @@ from sudoo_plugin_sdk.manifest import PLUGIN_TYPES
 
 @dataclass(frozen=True)
 class Group:
+    """One kind of plugin: where the panel looks for it and what it usually needs.
+
+    Attributes:
+        type: The manifest `type` that names this kind.
+        name: The entry-point group the panel reads, for example "sudoo.mailers".
+        interface: The name of the class or Protocol in this SDK that a plugin of this kind implements.
+        available: True when the panel loads this kind today; False when it is planned.
+        needs: Permissions a plugin of this kind cannot work without.
+        usually: Permissions most plugins of this kind ask for (a hint, not a rule).
+        description: A short sentence for people saying what the kind is for.
+    """
+
     type: str  # the manifest `type`
     name: str  # the entry-point group
     interface: str  # the class or Protocol in this SDK
@@ -23,6 +35,7 @@ class Group:
     description: str = ""
 
 
+# Every plugin kind, in the order the documentation lists them.
 GROUPS: tuple[Group, ...] = (
     Group("auth", "sudoo.auth", "Authenticator", True, usually=frozenset({"network.outbound"}),
           description="Checks a user name and password (LDAP, a company directory)"),
@@ -60,6 +73,7 @@ GROUPS: tuple[Group, ...] = (
 )  # fmt: skip
 
 # Groups a plugin may register beside its main one, without a `type` of their own.
+# Groups a plugin may register beside its main one, without a `type` of their own.
 EXTRA_GROUPS: dict[str, Group] = {
     "sudoo.api_blueprints": Group(
         "extension",
@@ -71,14 +85,28 @@ EXTRA_GROUPS: dict[str, Group] = {
     ),
 }
 
+# The groups by manifest `type`.
 BY_TYPE: dict[str, Group] = {group.type: group for group in GROUPS}
+# The groups by entry-point group name, including the extra groups.
 BY_NAME: dict[str, Group] = {group.name: group for group in GROUPS} | EXTRA_GROUPS
 
 assert set(BY_TYPE) == set(PLUGIN_TYPES)  # noqa: S101 - every manifest type has a group
 
 # A theme is data: colours, a logo and an e-mail accent. It never needs a permission.
+# Permissions a theme needs: none, because a theme is data (colours, a logo and an e-mail accent).
 THEME_PERMISSIONS: frozenset[str] = frozenset()
 
 
 def group_of(plugin_type: str) -> Group:
+    """Find the group of a plugin type.
+
+    Args:
+        plugin_type: A manifest `type`.
+
+    Returns:
+        The `Group` of that type.
+
+    Raises:
+        KeyError: When the type is not known.
+    """
     return BY_TYPE[plugin_type]

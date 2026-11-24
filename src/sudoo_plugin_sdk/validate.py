@@ -33,9 +33,11 @@ from sudoo_plugin_sdk.package import collect
 from sudoo_plugin_sdk.plugins.base import SudooPlugin
 from sudoo_plugin_sdk.theme import Theme, check_logo_svg
 
+# Entry-point groups whose plugins serve requests, so that the network.inbound permission makes sense.
 SERVES_REQUESTS = frozenset(
     {"sudoo.update_triggers", "sudoo.api_access", "sudoo.api_blueprints", "sudoo.mcp", "sudoo.web_pages"}
 )
+# The hub's built-in scanner: patterns of dynamic code execution and shell calls, each with a label.
 SCAN_PATTERNS = (  # the hub's built-in scanner (python_patterns)
     (re.compile(r"\beval\s*\("), "eval()"),
     (re.compile(r"\bexec\s*\("), "exec()"),
@@ -49,17 +51,37 @@ SCAN_PATTERNS = (  # the hub's built-in scanner (python_patterns)
 
 @dataclass
 class Report:
+    """The result of validating a project.
+
+    Attributes:
+        errors: Problems that stop the upload.
+        warnings: Things the hub flags for the reviewer or that are worth a look.
+        manifest: The manifest, when it could be read; otherwise None.
+    """
+
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     manifest: Manifest | None = None
 
     @property
     def ok(self) -> bool:
+        """Tell whether there are no errors.
+
+        Returns:
+            True when `errors` is empty.
+        """
         return not self.errors
 
 
 def manifest_errors(error: ValidationError) -> list[str]:
-    """The hub's way of naming the fields of an invalid manifest."""
+    """The hub's way of naming the fields of an invalid manifest.
+
+    Args:
+        error: The pydantic error.
+
+    Returns:
+        One line per problem, like "manifest.version: <message>".
+    """
     return [
         "manifest." + ".".join(str(part) for part in item["loc"]) + f": {item['msg']}"
         for item in error.errors(include_input=False, include_url=False)
@@ -67,6 +89,15 @@ def manifest_errors(error: ValidationError) -> list[str]:
 
 
 def validate(project: Path, *, import_code: bool = True) -> Report:
+    """Run every check on a plugin project.
+
+    Args:
+        project: The plugin's folder.
+        import_code: When False, the entry points are not imported.
+
+    Returns:
+        The report.
+    """
     report = Report()
     project = project.resolve()
     try:
@@ -94,6 +125,13 @@ def validate(project: Path, *, import_code: bool = True) -> Report:
 
 
 def _structure(project: Path, manifest: Manifest, report: Report) -> None:
+    """Check what goes into the package and the files a plugin should have.
+
+    Args:
+        project: The plugin's folder.
+        manifest: The plugin's manifest.
+        report: The report to add to.
+    """
     contents = collect(project, manifest)
     report.errors.extend(contents.errors)
     report.warnings.extend(contents.warnings)
@@ -113,6 +151,12 @@ def _structure(project: Path, manifest: Manifest, report: Report) -> None:
 
 
 def _groups_and_permissions(manifest: Manifest, report: Report) -> None:
+    """Check the entry-point groups and the permissions against each other.
+
+    Args:
+        manifest: The plugin's manifest.
+        report: The report to add to.
+    """
     groups = set(manifest.entry_points)
     for name in sorted(groups):
         if name not in BY_NAME:
@@ -158,6 +202,13 @@ def _groups_and_permissions(manifest: Manifest, report: Report) -> None:
 
 
 def _pyproject(project: Path, manifest: Manifest, report: Report) -> None:
+    """Check that the entry points and the version in pyproject.toml agree with the manifest.
+
+    Args:
+        project: The plugin's folder.
+        manifest: The plugin's manifest.
+        report: The report to add to.
+    """
     path = project / "pyproject.toml"
     if not path.is_file():
         return
@@ -184,7 +235,14 @@ def _pyproject(project: Path, manifest: Manifest, report: Report) -> None:
 
 @contextlib.contextmanager
 def _importable(folder: Path) -> Iterator[None]:
-    """Import from `folder` for a moment, then forget every module imported from it."""
+    """Import from `folder` for a moment, then forget every module imported from it.
+
+    Args:
+        folder: The folder to add to the import path.
+
+    Yields:
+        Nothing; the body of the `with` block runs while the folder is importable.
+    """
     before = set(sys.modules)
     sys.path.insert(0, str(folder))
     importlib.invalidate_caches()
@@ -201,6 +259,14 @@ def _importable(folder: Path) -> Iterator[None]:
 
 
 def load_target(target: str) -> Any:
+    """Import the object an entry point names.
+
+    Args:
+        target: Text like "module.path:Object" (the object may have dots).
+
+    Returns:
+        The object.
+    """
     module_name, _, attribute = target.partition(":")
     value: Any = importlib.import_module(module_name)
     for part in attribute.split("."):
@@ -209,11 +275,29 @@ def load_target(target: str) -> Any:
 
 
 def protocol_methods(protocol: type) -> list[str]:
+    """List the methods a Protocol class requires.
+
+    Args:
+        protocol: The Protocol class.
+
+    Returns:
+        The sorted method names.
+    """
     attrs: set[str] = set(getattr(protocol, "__protocol_attrs__", set()))
     return sorted(name for name in attrs if inspect.isfunction(protocol.__dict__.get(name)))
 
 
 def _code(project: Path, manifest: Manifest, report: Report) -> None:
+    """Import each entry point and check its class against the group's interface.
+
+    Args:
+        project: The plugin's folder.
+        manifest: The plugin's manifest.
+        report: The report to add to.
+
+    Side effects:
+        Imports the plugin's modules from its src/ folder.
+    """
     src = project / "src"
     if not src.is_dir():
         return
@@ -250,6 +334,13 @@ def _code(project: Path, manifest: Manifest, report: Report) -> None:
 
 
 def _theme(value: type, where: str, report: Report) -> None:
+    """Check a theme class.
+
+    Args:
+        value: The class an entry point names.
+        where: Text that says which entry point it is, for messages.
+        report: The report to add to.
+    """
     if not issubclass(value, Theme):
         report.errors.append(f"{where} must subclass sudoo_plugin_sdk.Theme.")
         return
@@ -259,6 +350,12 @@ def _theme(value: type, where: str, report: Report) -> None:
 
 
 def _scan(project: Path, report: Report) -> None:
+    """Scan the plugin's Python files for the patterns in `SCAN_PATTERNS`.
+
+    Args:
+        project: The plugin's folder.
+        report: The report to add to.
+    """
     src = project / "src"
     if not src.is_dir():
         return

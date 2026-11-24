@@ -15,20 +15,41 @@ from sudoo_plugin_sdk.context import PluginContext, PluginSettings
 
 
 class SudooPlugin:
-    """Subclass this and implement the interface of your plugin's group (see sudoo_plugin_sdk.plugins)."""
+    """Subclass this and implement the interface of your plugin's group (see sudoo_plugin_sdk.plugins).
+
+    Attributes:
+        required_permissions: Permissions the class needs at least; `sudoo-plugin validate` checks that the manifest
+            asks for them. Empty by default.
+        context: The `PluginContext` the panel gave the plugin.
+    """
 
     #: Permissions the class needs at least; `sudoo-plugin validate` checks the manifest asks for them.
     required_permissions: ClassVar[frozenset[str]] = frozenset()
 
     def __init__(self, context: PluginContext) -> None:
+        """Keep the context.
+
+        Args:
+            context: What the panel gives the plugin: settings, services, logger and data folder.
+        """
         self.context = context
 
     @property
     def settings(self) -> PluginSettings:
+        """The plugin's settings, as the administrator set them.
+
+        Returns:
+            The settings of the context.
+        """
         return self.context.settings
 
     @property
     def logger(self) -> logging.Logger:
+        """The plugin's logger.
+
+        Returns:
+            The logger of the context.
+        """
         return self.context.logger
 
     def on_install(self) -> None:
@@ -41,5 +62,7 @@ class SudooPlugin:
         """When it is turned off, or a paid licence ended: stop threads, keep all data."""
 
     def on_uninstall(self) -> None:
-        """Before the files are removed: delete what the plugin made outside its data folder. The panel has taken a
-        backup first."""
+        """Before the files are removed: delete what the plugin made outside its data folder.
+
+        The panel has taken a backup first.
+        """

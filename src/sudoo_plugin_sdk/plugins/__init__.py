@@ -3,6 +3,8 @@
 Groups the panel loads today: Exposure, AddonSource, UpdateTrigger, Storage, Authenticator, SecondFactor, Mailer,
 RateLimiter. Planned for Sudoo.sh 2.0: BackupDestination, NotificationChannel, InstanceHook, DashboardWidget,
 WebPage, BackgroundTask, Theme (sudoo_plugin_sdk.theme), ApiAccess, ApiRoutes, McpServer, Extension.
+
+This file only re-exports the names from base.py, core.py and planned.py.
 """
 
 from sudoo_plugin_sdk.plugins.base import SudooPlugin

@@ -1,3 +1,5 @@
+"""Tests of theme checks: tokens files, logos and e-mail accents."""
+
 from __future__ import annotations
 
 import re
@@ -29,10 +31,20 @@ DARK = """
 
 
 def css(light: str = "--accent: #2f5d8a;", dark: str = "--accent: #8fb4dc; --on-accent: #0e1a26;") -> str:
+    """Make a tokens file.
+
+    Args:
+        light: The declarations of the light rule.
+        dark: The declarations of the two dark rules.
+
+    Returns:
+        The CSS text.
+    """
     return f":root {{ {light} }}\n" + DARK.format(dark=dark)
 
 
 def test_a_valid_theme() -> None:
+    """Test: a valid theme."""
     report = check_tokens_css(css())
     assert report.errors == []
     assert report.light == {"--accent": "#2f5d8a"}
@@ -40,6 +52,7 @@ def test_a_valid_theme() -> None:
 
 
 def test_extra_media_and_comments_are_allowed() -> None:
+    """Test: extra media and comments are allowed."""
     text = css() + "/* stronger lines */ @media (prefers-contrast: more) { :root { --hairline: rgb(0 0 0 / 0.4); } }"
     assert check_tokens_css(text).errors == []
 
@@ -73,12 +86,14 @@ def test_extra_media_and_comments_are_allowed() -> None:
     ],
 )
 def test_bad_tokens_are_refused(text: str, message: str) -> None:
+    """Test: bad tokens are refused."""
     report = check_tokens_css(text)
     assert report.errors, text
     assert any(message in error for error in report.errors), report.errors
 
 
 def test_comment_markers_inside_strings_hide_nothing() -> None:
+    """Test: comment markers inside strings hide nothing."""
     hidden = css(light='--font: "/*";') + 'html body * { display: none; }\n:root { --font-mono: "*/"; }'
     report = check_tokens_css(hidden)
     assert report.errors
@@ -86,18 +101,21 @@ def test_comment_markers_inside_strings_hide_nothing() -> None:
 
 
 def test_quoted_values_and_comments_together() -> None:
+    """Test: quoted values and comments together."""
     text = css(light='--font: "Inter", sans-serif; /* the body font */')
     assert check_tokens_css(text).errors == []
     assert check_tokens_css(css(light='--font: "Inter;')).errors
 
 
 def test_weak_secondary_text_is_a_warning() -> None:
+    """Test: weak secondary text is a warning."""
     report = check_tokens_css(css(light="--text-3: #b0b0b0;"))
     assert report.errors == []
     assert any("--text-3" in w for w in report.warnings)
 
 
 def test_colours_and_contrast() -> None:
+    """Test: colours and contrast."""
     assert parse_colour("#fff") == (1.0, 1.0, 1.0)
     assert parse_colour("rgb(0 0 0 / 0.5)") == (0.0, 0.0, 0.0)
     assert parse_colour("var(--accent)") is None
@@ -105,12 +123,14 @@ def test_colours_and_contrast() -> None:
 
 
 def test_token_groups() -> None:
+    """Test: token groups."""
     assert not THEMEABLE_TOKENS & FIXED_TOKENS
     assert {"--accent", "--bg", "--font", "--radius-card", "--material"} <= THEMEABLE_TOKENS
 
 
 @pytest.mark.skipif(not PANEL_TOKENS_FILE.is_file(), reason="no checkout of the panel next to this one")
 def test_token_list_matches_the_panel() -> None:
+    """Test: token list matches the panel."""
     names = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", PANEL_TOKENS_FILE.read_text(), flags=re.MULTILINE))
     assert names == set(PANEL_TOKENS)
 
@@ -123,6 +143,7 @@ GOOD_LOGO = (
 
 
 def test_a_safe_logo() -> None:
+    """Test: a safe logo."""
     assert check_logo_svg(GOOD_LOGO) == []
 
 
@@ -158,11 +179,21 @@ def test_a_safe_logo() -> None:
     ],
 )
 def test_unsafe_logos_are_refused(svg: bytes, message: str) -> None:
+    """Test: unsafe logos are refused."""
     problems = check_logo_svg(svg)
     assert any(message in p for p in problems), problems
 
 
 def _svg(body: str, attributes: str = "") -> bytes:
+    """Make a small SVG logo.
+
+    Args:
+        body: The markup inside the svg element.
+        attributes: Extra attributes for the svg element, with a leading space.
+
+    Returns:
+        The file's bytes.
+    """
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"{attributes}>{body}</svg>'.encode()
 
 
@@ -187,11 +218,13 @@ def _svg(body: str, attributes: str = "") -> bytes:
     ],
 )
 def test_logos_outside_the_allow_list_are_refused(svg: bytes, message: str) -> None:
+    """Test: logos outside the allow list are refused."""
     problems = check_logo_svg(svg)
     assert any(message in p for p in problems), problems
 
 
 def test_a_logo_with_text_gradients_and_a_clip() -> None:
+    """Test: a logo with text gradients and a clip."""
     svg = _svg(
         '<title>Mark</title><defs><radialGradient id="g" cx="0.5" cy="0.5" r="0.5">'
         '<stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>'
@@ -204,6 +237,7 @@ def test_a_logo_with_text_gradients_and_a_clip() -> None:
 
 
 def test_email_accent() -> None:
+    """Test: email accent."""
     assert check_email_accent("#714B67") == ([], [])
     assert check_email_accent("714b67")[0]
     assert check_email_accent("#714B67\n")[0]

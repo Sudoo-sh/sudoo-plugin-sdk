@@ -32,15 +32,37 @@ from sudoo_plugin_sdk.validate import Report, validate
 
 
 def _say(text: str = "") -> None:
+    """Write a line to standard output.
+
+    Args:
+        text: The line, without a line break.
+    """
     sys.stdout.write(text + "\n")
 
 
 def _fail(text: str) -> int:
+    """Write a line to standard error.
+
+    Args:
+        text: The line, without a line break.
+
+    Returns:
+        1, the exit status for a failure.
+    """
     sys.stderr.write(text + "\n")
     return 1
 
 
 def _print_report(report: Report, strict: bool) -> bool:
+    """Print the errors, the warnings and a summary line of a report.
+
+    Args:
+        report: The validation report.
+        strict: When True, warnings also make the result not valid.
+
+    Returns:
+        True when the project counts as valid.
+    """
     for message in report.errors:
         _say(f"error    {message}")
     for message in report.warnings:
@@ -57,6 +79,14 @@ def _print_report(report: Report, strict: bool) -> bool:
 
 
 def cmd_new(args: argparse.Namespace) -> int:
+    """Run `sudoo-plugin new`.
+
+    Args:
+        args: The parsed arguments.
+
+    Returns:
+        The exit status.
+    """
     try:
         target = Path(args.dir) if args.dir else Path.cwd() / names_for(args.id).entry
         scaffold(args.type, args.id, target, author=args.author)
@@ -68,12 +98,28 @@ def cmd_new(args: argparse.Namespace) -> int:
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
+    """Run `sudoo-plugin validate`.
+
+    Args:
+        args: The parsed arguments.
+
+    Returns:
+        The exit status.
+    """
     report = validate(Path(args.path), import_code=not args.no_import)
     return 0 if _print_report(report, args.strict) else 1
 
 
 @contextlib.contextmanager
 def _on_path(folder: Path) -> Iterator[None]:
+    """Put a folder first on the import path for the duration of a `with` block.
+
+    Args:
+        folder: The folder.
+
+    Yields:
+        Nothing; the folder is removed from the path again afterwards.
+    """
     sys.path.insert(0, str(folder))
     try:
         yield
@@ -83,6 +129,14 @@ def _on_path(folder: Path) -> Iterator[None]:
 
 
 def cmd_test(args: argparse.Namespace) -> int:
+    """Run `sudoo-plugin test`: validate the project, then run its tests with pytest.
+
+    Args:
+        args: The parsed arguments.
+
+    Returns:
+        The exit status.
+    """
     project = Path(args.path).resolve()
     report = validate(project, import_code=True)
     if not _print_report(report, strict=False):
@@ -109,6 +163,14 @@ def cmd_test(args: argparse.Namespace) -> int:
 
 
 def cmd_pack(args: argparse.Namespace) -> int:
+    """Run `sudoo-plugin pack`.
+
+    Args:
+        args: The parsed arguments.
+
+    Returns:
+        The exit status.
+    """
     project = Path(args.path).resolve()
     report = validate(project, import_code=not args.no_import)
     if not _print_report(report, args.strict) or report.manifest is None:
@@ -123,6 +185,14 @@ def cmd_pack(args: argparse.Namespace) -> int:
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
+    """Run `sudoo-plugin verify`.
+
+    Args:
+        args: The parsed arguments.
+
+    Returns:
+        The exit status.
+    """
     package = Path(args.package)
     try:
         key_source = Path(args.public_key)
@@ -150,6 +220,14 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 
 def cmd_publish(args: argparse.Namespace) -> int:
+    """Run `sudoo-plugin publish`.
+
+    Args:
+        args: The parsed arguments.
+
+    Returns:
+        The exit status.
+    """
     target = Path(args.path).resolve()
     if target.is_dir():
         project = target
@@ -200,11 +278,27 @@ def cmd_publish(args: argparse.Namespace) -> int:
 
 
 def cmd_schema(_: argparse.Namespace) -> int:
+    """Run `sudoo-plugin schema`.
+
+    Args:
+        _: The parsed arguments; not used.
+
+    Returns:
+        The exit status.
+    """
     _say(json.dumps(json_schema(), indent=2))
     return 0
 
 
 def cmd_types(_: argparse.Namespace) -> int:
+    """Run `sudoo-plugin types`.
+
+    Args:
+        _: The parsed arguments; not used.
+
+    Returns:
+        The exit status.
+    """
     for group in GROUPS:
         state = "available" if group.available else "planned"
         needs = ", ".join(sorted(group.needs)) or "-"
@@ -216,6 +310,11 @@ def cmd_types(_: argparse.Namespace) -> int:
 
 
 def parser() -> argparse.ArgumentParser:
+    """Build the argument parser with every command.
+
+    Returns:
+        The parser.
+    """
     root = argparse.ArgumentParser(prog="sudoo-plugin", description="Build plugins for Sudoo.sh.")
     root.add_argument("--version", action="version", version=f"sudoo-plugin {__version__}")
     commands = root.add_subparsers(dest="command", required=True, metavar="command")
@@ -271,6 +370,14 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the command line.
+
+    Args:
+        argv: The arguments; None to read them from the process.
+
+    Returns:
+        The exit status.
+    """
     args = parser().parse_args(argv)
     if getattr(args, "pytest_args", None) and args.pytest_args[0] == "--":
         args.pytest_args = args.pytest_args[1:]

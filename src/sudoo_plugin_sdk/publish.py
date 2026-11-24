@@ -32,19 +32,38 @@ from sudoo_plugin_sdk.manifest import MANIFEST_NAME
 from sudoo_plugin_sdk.package import read_manifest
 from sudoo_plugin_sdk.signing import sha256_of
 
+# The address of the hub that is used when none is given.
 DEFAULT_HUB = "https://hub.sudoo.sh"
+# The environment variable that holds the developer token.
 TOKEN_ENV = "SUDOO_DEVELOPER_TOKEN"  # noqa: S105 - the name of the variable, not a secret
+# The environment variable that holds the hub's address.
 HUB_ENV = "SUDOO_HUB_URL"
+# The start of a developer API token.
 API_TOKEN_PREFIX = "sdk_"  # noqa: S105 - the prefix of developer API tokens, not a secret
+# The longest changelog text accepted, in characters.
 MAX_CHANGELOG = 10_000
 
 
 class PublishError(RuntimeError):
+    """Publishing failed; the message says why."""
+
     pass
 
 
 @dataclass(frozen=True)
 class Submission:
+    """The result of a submission.
+
+    Attributes:
+        url: The hub's address.
+        plugin_id: The plugin's id.
+        version: The version submitted.
+        sha256: The package's SHA-256, as hex.
+        size: The package's size in bytes.
+        new_plugin: True for a first version, False for a later one, None in a dry run (the hub was not asked).
+        response: The hub's answer, or None in a dry run.
+    """
+
     url: str
     plugin_id: str
     version: str
@@ -55,6 +74,17 @@ class Submission:
 
 
 def hub_url(value: str | None) -> str:
+    """Pick and check the hub's address.
+
+    Args:
+        value: The address given, or None to use SUDOO_HUB_URL or the default.
+
+    Returns:
+        The address without a trailing slash.
+
+    Raises:
+        PublishError: When it is not https (http is allowed only for a hub on this computer).
+    """
     url = (value or os.environ.get(HUB_ENV) or DEFAULT_HUB).rstrip("/")
     parts = urlsplit(url)
     local = parts.hostname in ("localhost", "127.0.0.1", "::1") or (parts.hostname or "").endswith(".localhost")
@@ -64,7 +94,15 @@ def hub_url(value: str | None) -> str:
 
 
 def changelog_entry(project: Path, version: str) -> str | None:
-    """The section of CHANGELOG.md for `version` ("## 1.2.0" or "## [1.2.0] - date"), without its heading."""
+    """The section of CHANGELOG.md for `version` ("## 1.2.0" or "## [1.2.0] - date"), without its heading.
+
+    Args:
+        project: The plugin's folder.
+        version: The version to look for.
+
+    Returns:
+        The section's text, or None when there is no file, no such section or the section is empty.
+    """
     path = project / "CHANGELOG.md"
     if not path.is_file():
         return None
@@ -91,6 +129,29 @@ def publish(
     dry_run: bool = False,
     client: httpx.Client | None = None,
 ) -> Submission:
+    """Send a package to the hub.
+
+    With `dry_run` nothing is sent. Without a token given, it is read from SUDOO_DEVELOPER_TOKEN. A token that starts
+    with "sdk_" submits versions only; any other token first lists the developer's plugins to choose the endpoint.
+
+    Args:
+        package: The .sudoo file.
+        changelog: What changed in this version, 1 to 10,000 characters.
+        hub: The hub's address, or None.
+        token: The developer token, or None to read it from the environment.
+        dry_run: When True, only read the package and return what would be sent.
+        client: An HTTP client to use, or None to make one.
+
+    Returns:
+        The submission, with the hub's answer.
+
+    Raises:
+        PublishError: When the package, the changelog, the token or the hub's answer is not acceptable, or the hub
+            cannot be reached.
+
+    Side effects:
+        Network calls to the hub.
+    """
     url = hub_url(hub)
     data = package.read_bytes()
     try:
@@ -147,12 +208,27 @@ def publish(
 
 
 def manifest_bytes(package: bytes) -> bytes:
-    """manifest.json exactly as it is in the package (the hub compares the two)."""
+    """manifest.json exactly as it is in the package (the hub compares the two).
+
+    Args:
+        package: The package bytes.
+
+    Returns:
+        The manifest's bytes.
+    """
     with zipfile.ZipFile(io.BytesIO(package)) as archive:
         return archive.read(MANIFEST_NAME)
 
 
 def _raise_for(response: httpx.Response) -> None:
+    """Turn an error answer of the hub into a `PublishError` with the hub's message and the fields it names.
+
+    Args:
+        response: The hub's answer. Nothing happens when its status is below 400.
+
+    Raises:
+        PublishError: When the status is 400 or higher.
+    """
     if response.status_code < 400:
         return
     try:
