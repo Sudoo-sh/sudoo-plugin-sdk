@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 
 import httpx
 import pytest
 
+from sudoo_plugin_sdk import scaffold
 from sudoo_plugin_sdk.cli import main
 from sudoo_plugin_sdk.publish import PublishError, changelog_entry, hub_url, publish
 from tests.conftest import ProjectFactory
@@ -24,6 +26,33 @@ def test_new_validate_test_pack(tmp_path: Path, capsys: pytest.CaptureFixture[st
     assert main(["pack", str(target)]) == 0
     out = capsys.readouterr().out
     assert "sha256 " in out and "com.example.alerts-0.1.0.sudoo" in out
+
+
+@pytest.mark.parametrize(
+    ("running", "expected"),
+    [("0.1.1", ">=0.1.0,<1.0.0"), ("0.2.5", ">=0.2.0,<1.0.0"), ("1.4.2", ">=1.4.0,<2.0.0")],
+)
+def test_new_projects_accept_every_patch_of_the_minor(
+    running: str, expected: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test: a new project's floor is <major>.<minor>.0, so panels offering an earlier patch accept it."""
+    monkeypatch.setattr(scaffold, "__version__", running)
+    assert scaffold.sdk_requirement() == expected
+    target = tmp_path / "brand"
+    assert main(["new", "theme", "com.example.brand", "--dir", str(target)]) == 0
+    assert json.loads((target / "manifest.json").read_text())["sdk_version"] == expected
+    project = tomllib.loads((target / "pyproject.toml").read_text())
+    assert project["project"]["dependencies"] == [f"sudoo-plugin-sdk{expected}"]
+    assert project["dependency-groups"]["dev"][0] == f"sudoo-plugin-sdk[test]{expected}"
+
+
+def test_new_projects_take_the_sdk_from_pypi(tmp_path: Path) -> None:
+    """Test: a new project installs the released SDK, not the Git repository's unreleased main branch."""
+    target = tmp_path / "brand"
+    assert main(["new", "theme", "com.example.brand", "--dir", str(target)]) == 0
+    project = tomllib.loads((target / "pyproject.toml").read_text())
+    assert "sources" not in project.get("tool", {}).get("uv", {})
+    assert main(["validate", str(target), "--strict"]) == 0  # the running SDK is inside the new floor
 
 
 def test_new_refuses_bad_input(tmp_path: Path) -> None:

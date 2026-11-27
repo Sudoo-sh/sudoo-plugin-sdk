@@ -29,8 +29,6 @@ from sudoo_plugin_sdk.manifest import PLUGIN_ID, PLUGIN_TYPES, SCHEMA_URL, Manif
 from sudoo_plugin_sdk.plugins import core, planned
 from sudoo_plugin_sdk.validate import protocol_methods
 
-SDK_GIT_URL = "https://github.com/Sudoo-sh/sudoo-plugin-sdk"
-
 
 class ScaffoldError(ValueError):
     """The project cannot be created; the message says why."""
@@ -91,11 +89,15 @@ def names_for(plugin_id: str) -> Names:
 def sdk_requirement() -> str:
     """The SDK version specifier written into new projects.
 
+    The floor is the first release of the running minor version, not the running patch: a patch release changes
+    no interface, and panels check `sdk_version` against the SDK contract they implement (for example 0.1.0), so a
+    floor of 0.1.1 would make every new plugin refused by a panel that offers 0.1.0.
+
     Returns:
-        A specifier from the running version up to, not including, the next major version.
+        A specifier from `<major>.<minor>.0` up to, not including, the next major version.
     """
-    major = int(__version__.split(".")[0])
-    return f">={__version__},<{major + 1}.0.0"
+    major, minor = (int(part) for part in __version__.split(".")[:2])
+    return f">={major}.{minor}.0,<{major + 1}.0.0"
 
 
 # --------------------------------------------------------------------------- the class, from the interface
@@ -315,10 +317,6 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "{names.module}"
-
-# Until sudoo-plugin-sdk is on PyPI it comes from its Git repository (see README).
-[tool.uv.sources]
-sudoo-plugin-sdk = {{ git = "{SDK_GIT_URL}" }}
 
 [dependency-groups]
 dev = ["sudoo-plugin-sdk[test]{manifest["sdk_version"]}", "pytest>=9.2.0"]

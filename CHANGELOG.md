@@ -6,6 +6,17 @@ says which SDK versions it was written for.
 
 ## [Unreleased]
 
+### Fixed
+
+- `sudoo-plugin new`: a new project's `sdk_version` and its `sudoo-plugin-sdk` dependency start at the first
+  release of the running minor version (`>=0.1.0,<1.0.0` with SDK 0.1.1), not at the running patch
+  (`>=0.1.1,<1.0.0`). Panels check `sdk_version` against the SDK contract they offer, and Sudoo.sh 3.6.0 offers
+  0.1.0, so every plugin made with `new` and SDK 0.1.1 was refused at install ("needs plugin SDK >=0.1.1"). A
+  patch release changes no interface.
+- `sudoo-plugin new`: a new project installs the SDK from PyPI. The `[tool.uv.sources]` entry that took it from
+  the Git repository's `main` branch (written before the SDK was on PyPI) is gone, so new projects no longer run
+  unreleased SDK code.
+
 ### Changed
 
 - Formatting and lint setup: black, ruff and mypy now run on every commit with pre-commit, and an `.editorconfig` is
