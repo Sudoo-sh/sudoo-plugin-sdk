@@ -104,13 +104,15 @@ def test_cli_verify(make_project: ProjectFactory, tmp_path: Path, capsys: pytest
     assert main(["verify", str(package), "--public-key", str(key_file)]) == 0
     assert "Verified: com.example.signed-theme 0.1.0" in capsys.readouterr().out
     raw = public_key_b64url(key.public_key())
-    assert main(["verify", str(package), "--public-key", raw, "--signature-file", str(tmp_path / "sig")]) == 0
+    assert main(["verify", str(package), f"--public-key={raw}", "--signature-file", str(tmp_path / "sig")]) == 0
     assert (
-        main(["verify", str(package), "--public-key", raw, "--signature", signed.signature, "--sha256", signed.sha256])
+        main(
+            ["verify", str(package), f"--public-key={raw}", "--signature", signed.signature, "--sha256", signed.sha256]
+        )
         == 0
     )
 
     wrong = public_key_b64url(generate_private_key().public_key())
-    assert main(["verify", str(package), "--public-key", wrong]) == 1
+    assert main(["verify", str(package), f"--public-key={wrong}"]) == 1
     assert "NOT VERIFIED" in capsys.readouterr().err
     assert main(["verify", str(package), "--public-key", "nonsense!"]) == 1
