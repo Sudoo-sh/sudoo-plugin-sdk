@@ -8,6 +8,10 @@ says which SDK versions it was written for.
 
 ### Fixed
 
+- The signing tests pass the random base64url key as `--public-key=KEY`, so a key that starts with `-` is no longer read as an option (an occasional test failure); the README says to use that form.
+
+### Fixed
+
 - `sudoo-plugin new`: a new project's `sdk_version` and its `sudoo-plugin-sdk` dependency start at the first
   release of the running minor version (`>=0.1.0,<1.0.0` with SDK 0.1.1), not at the running patch
   (`>=0.1.1,<1.0.0`). Panels check `sdk_version` against the SDK contract they offer, and Sudoo.sh 3.6.0 offers
