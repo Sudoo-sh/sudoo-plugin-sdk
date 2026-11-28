@@ -40,7 +40,8 @@ for every Git branch on your own server:
 12. [Environment variables](#environment-variables)
 13. [Security notes](#security-notes)
 14. [Working on the SDK](#working-on-the-sdk)
-15. [Links](#links)
+15. [How this code is organised](#how-this-code-is-organised)
+16. [Links](#links)
 
 ---
 
@@ -455,6 +456,26 @@ next to this one.
 Code is formatted with black and linted with ruff (settings in `pyproject.toml`; ruff also sorts imports), and mypy
 checks the types. Run `uv run black .` to rewrite files and `uv run black --check .` to check them without changes.
 The same checks run on every commit with pre-commit (run `uvx pre-commit install` once).
+
+## How this code is organised
+
+| Path | What lives there |
+| :--- | :--- |
+| `src/sudoo_plugin_sdk/cli.py`, `__main__.py` | The `sudoo-plugin` command and `python -m sudoo_plugin_sdk` |
+| `src/sudoo_plugin_sdk/manifest.py` | The manifest model (`manifest.json`, version 1), kept in step with the hub |
+| `src/sudoo_plugin_sdk/validate.py` | `sudoo-plugin validate`: the hub's automated checks, run locally |
+| `src/sudoo_plugin_sdk/package.py` | Building the deterministic `.sudoo` package |
+| `src/sudoo_plugin_sdk/signing.py` | Ed25519 signatures of packages |
+| `src/sudoo_plugin_sdk/publish.py` | `sudoo-plugin publish`: upload to the hub |
+| `src/sudoo_plugin_sdk/scaffold.py`, `templates/` | `sudoo-plugin new` and the files new projects start from |
+| `src/sudoo_plugin_sdk/context.py` | `PluginContext`: what the panel gives every plugin |
+| `src/sudoo_plugin_sdk/groups.py` | The entry-point groups the panel loads |
+| `src/sudoo_plugin_sdk/plugins/` | The base class and the interface of every plugin group (`core.py` today, `planned.py` later) |
+| `src/sudoo_plugin_sdk/theme.py` | Theme plugins: tokens, logo and e-mail accent |
+| `src/sudoo_plugin_sdk/testing/` | The fake panel and the pytest fixtures |
+| `tests/` | The SDK's own tests; `tests/data/` holds the hub's manifest schema |
+
+See [CONTRIBUTING.md](https://github.com/Sudoo-sh/sudoo-plugin-sdk/blob/main/CONTRIBUTING.md) for the documentation rule.
 
 ## Links
 
